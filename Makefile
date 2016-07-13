@@ -43,10 +43,10 @@ coverage: bootstrap
 	open ./build/coverage/jscoverage.html
 
 studio:
-	open -a "Framer Studio" extras/Studio.framer
+	open -a "Framer" extras/Studio.framer
 
 perf: debug
-	open -a "Framer Studio" extras/Perf.framer
+	open -a "Framer" extras/Perf.framer
 
 # Building and uploading the site
 
