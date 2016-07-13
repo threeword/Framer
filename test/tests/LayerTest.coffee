@@ -73,6 +73,15 @@ describe "Layer", ->
 			layer.width.should.equal 200
 			layer.style.width.should.equal "200px"
 
+		it "should set width not to scientific notation", ->
+
+			n = 0.000000000000002
+			n.toString().should.equal("2e-15")
+
+			layer = new Layer
+			layer.x = n
+			layer.style.webkitTransform.should.equal "translate3d(0px, 0px, 0px) scale3d(1, 1, 1) skew(0deg, 0deg) skewX(0deg) skewY(0deg) translateZ(0px) rotateX(0deg) rotateY(0deg) rotateZ(0deg) translateZ(0px)"
+
 		it "should set x and y", ->
 
 			layer = new Layer
@@ -129,7 +138,7 @@ describe "Layer", ->
 			layer._element.style.webkitTransformStyle.should.equal "flat"
 
 
-		it "should set local image", (done) ->
+		it "should set local image", ->
 
 			prefix = "../"
 			imagePath = "static/test.png"
@@ -142,14 +151,56 @@ describe "Layer", ->
 			image = layer.props.image
 			layer.props.image.should.equal fullPath
 
+			layer.style["background-image"].indexOf(imagePath).should.not.equal(-1)
+			layer.style["background-image"].indexOf("file://").should.not.equal(-1)
+			layer.style["background-image"].indexOf("?nocache=").should.not.equal(-1)
+
+		it "should set local image when listening to load events", (done) ->
+			prefix = "../"
+			imagePath = "static/test.png"
+			fullPath = prefix + imagePath
+			layer = new Layer
+
 			layer.on Events.ImageLoaded, ->
 				layer.style["background-image"].indexOf(imagePath).should.not.equal(-1)
 				layer.style["background-image"].indexOf("file://").should.not.equal(-1)
 				layer.style["background-image"].indexOf("?nocache=").should.not.equal(-1)
 				done()
 
+			layer.image = fullPath
+			layer.image.should.equal fullPath
+
+			image = layer.props.image
+			layer.props.image.should.equal fullPath
+
+			layer.style["background-image"].indexOf(imagePath).should.equal(-1)
+			layer.style["background-image"].indexOf("file://").should.equal(-1)
+			layer.style["background-image"].indexOf("?nocache=").should.equal(-1)
+
 			#layer.computedStyle()["background-size"].should.equal "cover"
 			#layer.computedStyle()["background-repeat"].should.equal "no-repeat"
+
+		it "should cancel loading when setting image to null", (done) ->
+			prefix = "../"
+			imagePath = "static/test.png"
+			fullPath = prefix + imagePath
+
+			#First set the image directly to something
+			layer = new Layer
+				image: "static/test2.png"
+
+			#Now add event handlers
+			layer.on Events.ImageLoadCancelled, ->
+				layer.style["background-image"].indexOf(imagePath).should.equal(-1)
+				layer.style["background-image"].indexOf("file://").should.equal(-1)
+				layer.style["background-image"].indexOf("?nocache=").should.equal(-1)
+				done()
+
+			#so we preload the next image
+			layer.image = fullPath
+
+			#set the image no null to cancel the loading
+			layer.image = null
 
 		it "should set image", ->
 			imagePath = "../static/test.png"
@@ -893,7 +944,7 @@ describe "Layer", ->
 			inputElements = layer.querySelectorAll("input")
 			inputElements.length.should.equal 1
 
-			inputElement = _.first(inputElements)
+			inputElement = _.head(inputElements)
 			inputElement.getAttribute("id").should.equal "hello"
 
 	describe "Force 2D", ->

@@ -67,6 +67,15 @@ Originals =
 			tension: 500
 			friction: 10
 			tolerance: 1
+	GridComponent:
+		rows: 3
+		columns: 3
+		spacing: 0
+		backgroundColor: "transparent"
+	ScrollComponent:
+		clip: true
+		mouseWheelEnabled: false
+		backgroundColor: null
 
 exports.Defaults =
 
@@ -74,6 +83,8 @@ exports.Defaults =
 
 		return {} unless Originals.hasOwnProperty(className)
 		return {} unless Framer.Defaults.hasOwnProperty(className)
+
+		options = _.clone options
 
 		# Always start with the originals
 		defaults = _.clone Originals[className]

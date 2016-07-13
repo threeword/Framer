@@ -153,15 +153,21 @@ class exports.Color extends BaseClass
 	toString: ->
 		return @toRgbString()
 
-	transparent: ->
+	alpha: (alpha = 1) ->
 		result = new Color
 			r: @r
 			g: @g
 			b: @b
-			a: 0
+			a: alpha
+
+	transparent: ->
+		@alpha(0)
 
 	mix: (colorB, fraction, limit = false, model) ->
 		return Color.mix(@, colorB, fraction, limit, model)
+
+	copy: ->
+		return new Color(@)
 
 	isEqual: (colorB) ->
 		return Color.equal(@, colorB)
@@ -253,6 +259,12 @@ class exports.Color extends BaseClass
 	@random: (alpha = 1.0) ->
 		c = -> parseInt(Math.random() * 255)
 		return new Color "rgba(#{c()}, #{c()}, #{c()}, #{alpha})"
+
+	@grey: (g = 0.5, alpha = 1) ->
+		g = parseInt(g * 255)
+		return new Color "rgba(#{g}, #{g}, #{g}, #{alpha})"
+
+	@gray: (args...) -> @grey(args...)
 
 	@toColor: (color) -> return new Color(color)
 	@validColorValue: (color) -> return color instanceof Color or color == null
@@ -606,7 +618,8 @@ stringToObject = (color) ->
 cssNames =
 	aliceblue:"f0f8ff"
 	antiquewhite:"faebd7"
-	aqua:"0ff",aquamarine:"7fffd4"
+	aqua:"0ff"
+	aquamarine:"7fffd4"
 	azure:"f0ffff"
 	beige:"f5f5dc"
 	bisque:"ffe4c4"

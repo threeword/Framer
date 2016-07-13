@@ -3,6 +3,7 @@ Utils = require "../Utils"
 
 {Layer} = require "../Layer"
 {Events} = require "../Events"
+{Defaults} = require "../Defaults"
 
 """
 ScrollComponent
@@ -53,13 +54,13 @@ EventMappers[Events.DirectionLockStart] = Events.DirectionLockStart
 class exports.ScrollComponent extends Layer
 
 	# Proxy properties directly from the draggable
-	@define "velocity", @proxyProperty "content.draggable.velocity", importable: false
+	@define "velocity", @proxyProperty("content.draggable.velocity", {importable: false, exportable: false})
 	@define "scrollHorizontal", @proxyProperty("content.draggable.horizontal")
 	@define "scrollVertical", @proxyProperty("content.draggable.vertical")
 	@define "speedX", @proxyProperty("content.draggable.speedX")
 	@define "speedY", @proxyProperty("content.draggable.speedY")
-	@define "isDragging", @proxyProperty "content.draggable.isDragging", importable: false
-	@define "isMoving", @proxyProperty "content.draggable.isMoving", importable: false
+	@define "isDragging", @proxyProperty("content.draggable.isDragging", {importable: false, exportable: false})
+	@define "isMoving", @proxyProperty("content.draggable.isMoving", {importable: false, exportable: false})
 	@define "propagateEvents", @proxyProperty("content.draggable.propagateEvents")
 	@define "directionLock", @proxyProperty("content.draggable.directionLock")
 	@define "directionLockThreshold", @proxyProperty("content.draggable.directionLockThreshold")
@@ -73,19 +74,15 @@ class exports.ScrollComponent extends Layer
 
 	constructor: (options={}) ->
 
-		# options.backgroundColor ?= null
-		options.clip ?= true
-		options.mouseWheelEnabled ?= false
-		options.backgroundColor ?= null
-
-		super options
+		super Defaults.getDefaults("ScrollComponent", options)
 
 		@_contentInset = options.contentInset or Utils.rectZero()
 		@setContentLayer(new Layer)
 
-		# Because we did not have a content layer before, we want to re-apply
-		# the options again so everything gets configures properly.
-		@_applyOptionsAndDefaults(options)
+		# Only at this point we can set all the proxy properties, because before
+		# this the content layer did not exist. So we have to apply those again.
+		@_applyProxyDefaults(options)
+
 		@_enableMouseWheelHandling(options.mouseWheelEnabled)
 
 		if options.hasOwnProperty("wrap")
@@ -106,7 +103,6 @@ class exports.ScrollComponent extends Layer
 			y: 0
 			width:  Math.max(@width,  contentFrame.x + contentFrame.width)
 			height: Math.max(@height, contentFrame.y + contentFrame.height)
-
 
 	setContentLayer: (layer) ->
 
@@ -144,7 +140,7 @@ class exports.ScrollComponent extends Layer
 		# call it yourself, but make sure you don't overdo it.
 
 		return unless @content
-		
+
 		contentFrame = @calculateContentFrame()
 		@content.width = contentFrame.width
 		@content.height = contentFrame.height
@@ -232,9 +228,9 @@ class exports.ScrollComponent extends Layer
 			_.clone(@_contentInset)
 		set: (contentInset) ->
 			@_contentInset = Utils.rectZero(Utils.parseRect(contentInset))
-			
+
 			return unless @content
-			
+
 			# If we reset the content inset, we need to reset the content position
 			contentFrame = @calculateContentFrame()
 			contentFrame.x = contentFrame.x + @_contentInset.left
@@ -310,7 +306,7 @@ class exports.ScrollComponent extends Layer
 		return @closestContentLayerForScrollPoint(scrollPoint, originX, originY)
 
 	closestContentLayerForScrollPoint: (scrollPoint, originX=0, originY=0) ->
-		return _.first(@_contentLayersSortedByDistanceForScrollPoint(scrollPoint, originX, originY))
+		return _.head(@_contentLayersSortedByDistanceForScrollPoint(scrollPoint, originX, originY))
 
 	_scrollPointForLayer: (layer, originX=0, originY=0, clamp=true) ->
 		return Utils.framePointForOrigin(layer, originX, originY)
@@ -391,7 +387,7 @@ class exports.ScrollComponent extends Layer
 
 	copy: ->
 		copy = super
-		contentLayer = _.first(_.without(copy.children, copy.content))
+		contentLayer = _.head(_.without(copy.children, copy.content))
 		copy.setContentLayer(contentLayer)
 		copy.props = @props
 		return copy
@@ -414,14 +410,19 @@ wrapComponent = (instance, layer, options = {correct:true}) ->
 
 	scroll = instance
 
+	# Do some special case handling for the PageComponent subclass
+	# as this function is outside of the class scope so we can’t simply
+	# override
+	isPageComponent = instance.constructor.name is "PageComponent"
+
 	# If we actually forgot to add a sub layer, so for example if
 	# there is just one layer and we want to make it scrollable we
 	# correct that here.
 
 	if options.correct is true
-		if layer.children.length is 0
+		if layer.children.length is 0 and not isPageComponent
 			wrapper = new Layer
-			wrapper.name = "ScrollComponent"
+			wrapper.name = instance.constructor.name
 			wrapper.frame = layer.frame
 			layer.parent = wrapper
 			layer.x = layer.y = 0
@@ -435,7 +436,9 @@ wrapComponent = (instance, layer, options = {correct:true}) ->
 
 	# Copy over the name, if we don't have it try to use the variable
 	# name from Framer Studio if it was given.
-	if layer.name and layer.name isnt ""
+	if isPageComponent
+		scroll.name = instance.constructor.name
+	else if layer.name and layer.name isnt ""
 		scroll.name = layer.name
 	else if layer.__framerInstanceInfo?.name
 		scroll.name = layer.__framerInstanceInfo.name
@@ -444,15 +447,15 @@ wrapComponent = (instance, layer, options = {correct:true}) ->
 	# background of the wrapper then the content.
 	# Note: I ran into a situation where this had a weird result, maybe
 	# we should revise this in the future.
-	if layer.image
+	if layer.image and not isPageComponent
 		scroll.image = layer.image
 		layer.image = null
 
-	# Set the original layer as the content layer for the scroll
-	if instance.constructor.name is "PageComponent"
-		for l in layer.children
-			scroll.addPage(l)
+	if isPageComponent
+		# Just add the layer as a page
+		scroll.addPage(layer)
 	else
+		# Set the original layer as the content layer for the scroll
 		scroll.setContentLayer(layer)
 
 	# https://github.com/motif/Company/issues/208
