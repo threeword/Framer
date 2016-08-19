@@ -3,14 +3,15 @@
 
   },
   "deviceOrientation" : 0,
-  "sharedPrototype" : 1,
+  "sharedPrototype" : 0,
   "contentScale" : 1,
-  "deviceType" : "fullscreen",
-  "selectedHand" : "",
+  "deviceType" : "apple-iphone-6s-silver",
+  "selectedHand" : "iphone-hands-1",
   "updateDelay" : 0.3,
-  "deviceScale" : 1,
+  "deviceScale" : "fit",
   "foldedCodeRanges" : [
-    "{96, 2417}"
+
   ],
-  "orientation" : 0
+  "orientation" : 0,
+  "fullScreen" : false
 }
