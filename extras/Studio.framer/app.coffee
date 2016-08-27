@@ -42,6 +42,7 @@ article.updateContent()
 # Import file "label"
 sketch = Framer.Importer.load("imported/label@1x")
 
+
 # Create the underline layer
 line = new Layer 
 	width: 0
@@ -72,62 +73,69 @@ title = new InputLayer
 	color: "rgba(255,255,255,0.5)"
 	focusColor: "#FFF"
 	fontSize: 96
-
 	
-# # Store position
-# curY = title.y	
-# 
-# # Switch to floating label
-# switchLabels = ->
-# 	title.input.value = "Title"
-# 	title.input.blur()
-# 	
-# 	titleAnim = title.animate 
-# 		properties: 
-# 			y: curY - 92
-# 		curve: "spring(200,22,16)"
-# 		
-# 	line.states.switch("show")
-# 	
-# 	# Create new, actual input field
-# 	field = new InputLayer 		
-# 	field.style = title.style
-# 	field.input.placeholder = " "	
-# 	field.input.focus()
-# 	
-# 	field.input.onkeyup = ->	
-# 		if @value is ""
-# 			title.animate 
-# 				properties: 
-# 					y: curY
-# 				curve: "spring(200,22,16)"
-# 			line.states.switch("hide")
-# 			
-# 		else 
-# 			titleAnim.start()
-# 	
-# 			line.states.animationOptions = 
-# 				curve: "ease"
-# 				time: 0.15
-# 				
-# 			line.states.switch("show")
-# 	
-# # On Mobile	
-# if Utils.isMobile()
-# 	title.input.onkeyup = ->
-# 		switchLabels()
-# 		
-# # On Desktop
-# else
-# 	title.input.onkeydown = ->
-# 		switchLabels()
-# 		
-# # Modulate the y changes to fontSize changes
-# title.on "change:y", ->
-# 	size = Utils.modulate(this.y, [curY, curY - 92], [96, 40], true)
-# 	title.input.style.fontSize = "#{size}px"
-# 	
-# 	if size < 90
-# 		title.input.style.color = "#64FCDA"
-# 	else 
-# 		title.input.style.color = "rgba(255,255,255,0.3)"
+title.input.x = 0
+	
+# Store position
+curY = title.y	
+
+# Switch to floating label
+switchLabels = ->
+	title.input.value = title.input.placeholder = "Title"
+	title.input.blur()
+	
+	titleAnim = title.animate 
+		properties: 
+			y: curY - 100
+			color: "#64FCDA"
+		curve: "spring(200,22,16)"
+		
+	line.states.switch("show")
+	
+	# Create new, actual input field
+	field = new InputLayer 		
+		focusColor: "#FFF"
+		fontSize: 96
+		width: title.width 
+		height: title.height
+		
+	
+	field.props = title.props
+	field.style = title.style
+	field.input.placeholder = ""	
+	field.input.focus()
+	
+	field.input.onkeyup = ->	
+		if @value is ""
+			title.animate 
+				properties: 
+					y: curY
+					color: "rgba(255,255,255,0.3)"
+					
+				curve: "spring(200,22,16)"
+			line.states.switch("hide")
+			
+		else 
+			titleAnim.start()
+	
+			line.states.animationOptions = 
+				curve: "ease"
+				time: 0.15
+				
+			line.states.switch("show")
+	
+# On Mobile	
+if Utils.isMobile()
+	title.input.onkeyup = ->
+		switchLabels()
+		
+# On Desktop
+else
+	title.input.onkeydown = ->
+		switchLabels()
+		
+# Modulate the y changes to fontSize changes
+title.on "change:y", ->
+	size = Utils.modulate(@y, [curY, curY - 100], [100, 40], true)
+	title.input.style.fontSize = "#{size}px"
+		
