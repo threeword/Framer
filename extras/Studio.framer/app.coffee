@@ -1,3 +1,5 @@
+
+###
 # Article prototype
 Screen.backgroundColor = "#fff"
 
@@ -39,6 +41,7 @@ body = new TextLayer
 article.updateContent()
 
 
+# Input prototype
 # Import file "label"
 sketch = Framer.Importer.load("imported/label@1x")
 
@@ -138,4 +141,15 @@ else
 title.on "change:y", ->
 	size = Utils.modulate(@y, [curY, curY - 100], [100, 40], true)
 	title.input.style.fontSize = "#{size}px"
-		
+	
+	
+	
+###
+
+
+
+
+t = new TextLayer
+	text: "Test"
+	fontFamily: Utils.webFont("Montserrat")
+	
