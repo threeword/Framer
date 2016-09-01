@@ -150,6 +150,9 @@ title.on "change:y", ->
 
 
 t = new TextLayer
-	text: "Test"
+	text: "Google Web Fonts! Yay."
 	fontFamily: Utils.webFont("Montserrat")
+	x: 50
+	y: 50
+	textTransform: "uppercase"
 	
