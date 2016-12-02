@@ -14,20 +14,21 @@ Utils.getValue = (value) ->
 Utils.getValueForKeyPath = (obj, key) ->
 	result = obj
 	return obj[key] if not "." in key
-	result = result[key] for key in key.split(".")
+	for key in key.split(".")
+		result = result[key]
 	result
 
 Utils.setValueForKeyPath = (obj, path, val) ->
-	fields = path.split('.')
+	fields = path.split(".")
 	result = obj
 	i = 0
 	n = fields.length
-	while i < n and result != undefined
+	while i < n and result isnt undefined
 		field = fields[i]
-		if i == n - 1
+		if i is n - 1
 			result[field] = val
 		else
-			if typeof result[field] == 'undefined' or !_.isObject(result[field])
+			if typeof result[field] is "undefined" or not _.isObject(result[field])
 				result[field] = {}
 			result = result[field]
 		i++
@@ -152,7 +153,7 @@ Utils.randomImage = (layer, offset=50) ->
 	if _.isNumber(layer)
 		layer = {id: layer}
 
-	photos = ["1417733403748-83bbc7c05140", "1423841265803-dfac59ebf718", "1463560018368-0814042d17b7", "1433689056001-018e493576bc", "1430812411929-de4cf1d1fe73", "1457269449834-928af64c684d", "1443616839562-036bb2afd9a2", "1461535676131-2de1f7054d3f", "1462393582935-1ac76b85dcf1", "1414589530802-cb54ce0575d9", "1422908132590-117a051fc5cd", "1438522014717-d7ce32b9bab9", "1451650804883-52fb86cc5b18", "1462058164249-2dcdcda67ce7", "1456757014009-0614a080ff7f", "1434238255348-4fb0d9caa0a4", "1448071792026-7064a01897e7", "1458681842652-019f4eeda5e5", "1460919920543-d8c45f4bd621", "1447767961238-038617b84a2b", "1449089299624-89ce41e8306c", "1414777410116-81e404502b52", "1433994349623-0a18966ee9c0", "1452567772283-91d67178f409", "1458245229726-a8ba04cb5969", "1422246719650-cb30d19825e3", "1417392639864-2c88dd07f460", "1442328166075-47fe7153c128", "1448467258552-6b3982373a13", "1447023362548-250f3a7b80ed", "1451486242265-24b0c0ef9a51", "1414339372428-797ec111646d"]
+	photos = ["1417733403748-83bbc7c05140", "1423841265803-dfac59ebf718", "1433689056001-018e493576bc", "1430812411929-de4cf1d1fe73", "1457269449834-928af64c684d", "1443616839562-036bb2afd9a2", "1461535676131-2de1f7054d3f", "1462393582935-1ac76b85dcf1", "1414589530802-cb54ce0575d9", "1422908132590-117a051fc5cd", "1438522014717-d7ce32b9bab9", "1451650804883-52fb86cc5b18", "1462058164249-2dcdcda67ce7", "1456757014009-0614a080ff7f", "1434238255348-4fb0d9caa0a4", "1448071792026-7064a01897e7", "1458681842652-019f4eeda5e5", "1460919920543-d8c45f4bd621", "1447767961238-038617b84a2b", "1449089299624-89ce41e8306c", "1414777410116-81e404502b52", "1433994349623-0a18966ee9c0", "1452567772283-91d67178f409", "1458245229726-a8ba04cb5969", "1422246719650-cb30d19825e3", "1417392639864-2c88dd07f460", "1442328166075-47fe7153c128", "1448467258552-6b3982373a13", "1447023362548-250f3a7b80ed", "1451486242265-24b0c0ef9a51", "1414339372428-797ec111646d"]
 	photo = Utils.randomChoice(photos)
 	photo = photos[(layer.id) % photos.length] if layer?.id
 
@@ -176,15 +177,21 @@ Utils.defineEnum = (names = [], offset = 0, geometric = 0) ->
 	Enum = {}
 	for name, i in names
 		j = i
-		j = if ! offset    then j else j + offset
-		j = if ! geometric then j else Math.pow geometric, j
+		j = if not offset    then j else j + offset
+		j = if not geometric then j else Math.pow geometric, j
 		Enum[Enum[name] = j] = name
 	return Enum
 
 Utils.labelLayer = (layer, text, style={}) ->
 
+	return unless text
+	return if text is ""
+	return unless typeof(text) is "string"
+
+	fontSize = Math.max(Math.min(48, parseInt(layer.height / 3.2)), 14)
+
 	style = _.extend({
-		font: "10px/1em Menlo"
+		font: "#{fontSize}px/1em #{Utils.deviceFont()}"
 		lineHeight: "#{layer.height}px"
 		textAlign: "center"
 		color: "#fff"
@@ -207,7 +214,7 @@ Utils.inspectObjectType = (item) ->
 	# This is a hacky way to get nice object names, it tries to
 	# parse them from the .toString methods for objects.
 
-	if item.constructor?.name? and item.constructor?.name != "Object"
+	if item.constructor?.name? and item.constructor?.name isnt "Object"
 		return item.constructor.name
 
 	extract = (str) ->
@@ -270,7 +277,7 @@ Utils.uuid = ->
 		random = 0x2000000 + (Math.random() * 0x1000000) | 0 if (random <= 0x02)
 		r = random & 0xf
 		random = random >> 4
-		output[digit] = chars[if digit == 19 then (r & 0x3) | 0x8 else r]
+		output[digit] = chars[if digit is 19 then (r & 0x3) | 0x8 else r]
 
 	output.join ""
 
@@ -352,11 +359,14 @@ Utils.isMobile = ->
 Utils.isFileUrl = (url) ->
 	return _.startsWith(url, "file://")
 
+Utils.isDataUrl = (url) ->
+	return _.startsWith(url, "data:")
+
 Utils.isRelativeUrl = (url) ->
-	!/^([a-zA-Z]{1,8}:\/\/).*$/.test(url)
+	not /^([a-zA-Z]{1,8}:\/\/).*$/.test(url)
 
 Utils.isLocalServerUrl = (url) ->
-	return url.indexOf("127.0.0.1") != -1 or url.indexOf("localhost")  != -1
+	return url.indexOf("127.0.0.1") isnt -1 or url.indexOf("localhost")  isnt -1
 
 Utils.isLocalUrl = (url) ->
 	return true if Utils.isFileUrl(url)
@@ -365,12 +375,13 @@ Utils.isLocalUrl = (url) ->
 
 Utils.isLocalAssetUrl = (url, baseUrl) ->
 	baseUrl ?= window.location.href
+	return false if Utils.isDataUrl(url)
 	return true if Utils.isLocalUrl(url)
 	return true if Utils.isRelativeUrl(url) and Utils.isLocalUrl(baseUrl)
 	return false
 
 Utils.isFramerStudio = ->
-	navigator.userAgent.indexOf("FramerStudio") != -1
+	navigator.userAgent.indexOf("FramerStudio") isnt -1
 
 Utils.framerStudioVersion = ->
 
@@ -470,7 +481,7 @@ Utils.modulate = (value, rangeA, rangeB, limit=false) ->
 	[toLow, toHigh] = rangeB
 
 	# if rangeB consists of Colors we return a color tween
-	# if Color.isColor(toLow) || _.isString(toLow) && Color.isColorString(toLow)
+	# if Color.isColor(toLow) or _.isString(toLow) and Color.isColorString(toLow)
 	# 	ratio = Utils.modulate(value, rangeA, [0, 1])
 	# 	result = Color.mix(toLow, toHigh, ratio)
 	# 	return result
@@ -493,7 +504,6 @@ Utils.modulate = (value, rangeA, rangeB, limit=false) ->
 # STRING FUNCTIONS
 
 Utils.parseFunction = (str) ->
-
 	result = {name: "", args: []}
 
 	if _.endsWith str, ")"
@@ -631,6 +641,9 @@ Utils.loadImage = (url, callback, context) ->
 
 	element.src = url
 
+Utils.isInsideIframe = ->
+	return window isnt window.top
+
 ######################################################
 # GEOMETRY FUNCTIONS
 
@@ -649,7 +662,7 @@ Utils.point = (input) ->
 	return result
 
 Utils.pointZero = (n=0) ->
-	return {x:n, y:n}
+	return {x: n, y: n}
 
 Utils.pointDivide = (point, fraction) ->
 	return point =
@@ -729,38 +742,38 @@ Utils.size = (input) ->
 
 	return result
 
-Utils.sizeZero = (n=0)->
-	return {width:n, height:n}
+Utils.sizeZero = (n=0) ->
+	return {width: n, height: n}
 
 Utils.sizeMin = ->
 	sizes = Utils.arrayFromArguments arguments
 	size  =
-		width:  _.min sizes.map (size) -> size.width
+		width: _.min sizes.map (size) -> size.width
 		height: _.min sizes.map (size) -> size.height
 
 Utils.sizeMax = ->
 	sizes = Utils.arrayFromArguments arguments
 	size  =
-		width:  _.max sizes.map (size) -> size.width
+		width: _.max sizes.map (size) -> size.width
 		height: _.max sizes.map (size) -> size.height
 
 # Rect
 
 Utils.rectZero = (args={}) ->
-	return _.defaults(args, {top:0, right:0, bottom:0, left:0})
+	return _.defaults(args, {top: 0, right: 0, bottom: 0, left: 0})
 
 Utils.parseRect = (args) ->
 	if _.isArray(args) and _.isNumber(args[0])
-		return Utils.parseRect({top:args[0]}) if args.length is 1
-		return Utils.parseRect({top:args[0], right:args[1]}) if args.length is 2
-		return Utils.parseRect({top:args[0], right:args[1], bottom:args[2]}) if args.length is 3
-		return Utils.parseRect({top:args[0], right:args[1], bottom:args[2], left:args[3]}) if args.length is 4
+		return Utils.parseRect({top: args[0]}) if args.length is 1
+		return Utils.parseRect({top: args[0], right: args[1]}) if args.length is 2
+		return Utils.parseRect({top: args[0], right: args[1], bottom: args[2]}) if args.length is 3
+		return Utils.parseRect({top: args[0], right: args[1], bottom: args[2], left: args[3]}) if args.length is 4
 	if _.isArray(args) and _.isObject(args[0])
 		return args[0]
 	if _.isObject(args)
 		return args
 	if _.isNumber(args)
-		return {top:args, right:args, bottom:args, left:args}
+		return {top: args, right: args, bottom: args, left: args}
 
 	return {}
 
@@ -807,7 +820,7 @@ Utils.frame = (input) ->
 	return result
 
 Utils.frameZero = (n=0) ->
-	return {x:n, y:n}
+	return {x: n, y: n}
 
 Utils.frameSize = (frame) ->
 	size =
@@ -824,10 +837,10 @@ Utils.pointsFromFrame = (frame) ->
 	maxX = Utils.frameGetMaxX(frame)
 	minY = Utils.frameGetMinY(frame)
 	maxY = Utils.frameGetMaxY(frame)
-	corner1 = {x:minX, y:minY}
-	corner2 = {x:minX, y:maxY}
-	corner3 = {x:maxX, y:maxY}
-	corner4 = {x:maxX, y:minY}
+	corner1 = {x: minX, y: minY}
+	corner2 = {x: minX, y: maxY}
+	corner3 = {x: maxX, y: maxY}
+	corner4 = {x: maxX, y: minY}
 	return [corner1, corner2, corner3, corner4]
 
 Utils.frameFromPoints = (points) ->
@@ -869,7 +882,7 @@ Utils.frameMerge = ->
 	frame
 
 Utils.frameInFrame = (frameA, frameB) ->
-	
+
 	for point in Utils.pointsFromFrame(frameA)
 		return false unless Utils.pointInFrame(point, frameB)
 
@@ -885,7 +898,7 @@ Utils.framePointForOrigin = (frame, originX, originY) ->
 Utils.frameInset = (frame, inset) ->
 
 	if _.isNumber(inset)
-		inset = {top:inset, right:inset, bottom:inset, left:inset}
+		inset = {top: inset, right: inset, bottom: inset, left: inset}
 
 	frame = Utils.frame(frame)
 
@@ -917,9 +930,9 @@ Utils.pointInPolygon = (point, vs) ->
 		yi = vs[i][1]
 		xj = vs[j][0]
 		yj = vs[j][1]
-		intersect = yi > y != yj > y and x < (xj - xi) * (y - yi) / (yj - yi) + xi
+		intersect = yi > y isnt yj > y and x < (xj - xi) * (y - yi) / (yj - yi) + xi
 		if intersect
-			inside = !inside
+			inside = not inside
 		j = i++
 	inside
 
@@ -954,13 +967,21 @@ Utils.frameCenterPoint = (frame) ->
 		x: Utils.frameGetMidX(frame)
 		y: Utils.frameGetMidY(frame)
 
+Utils.frameInFrame = (frameA, frameB) ->
+	
+	for point in Utils.pointsFromFrame(frameA)
+		return false unless Utils.pointInFrame(point, frameB)
+
+	return true
+
+
 # Rotation
 
 Utils.rotationNormalizer = ->
 
 	lastValue = null
 
-	return (value) =>
+	return (value) ->
 		lastValue = value if not lastValue?
 
 		diff = lastValue - value
@@ -978,7 +999,7 @@ Utils.rotationNormalizer = ->
 
 # convert a point from a layer to the context level, with rootContext enabled you can make it cross to the top context
 Utils.convertPointToContext = (point = {}, layer, rootContext=false, includeLayer=true) ->
-	point = _.defaults(point, {x:0, y:0, z:0})
+	point = _.defaults(point, {x: 0, y: 0, z: 0})
 	ancestors = layer.ancestors(rootContext)
 	ancestors.unshift(layer) if includeLayer
 
@@ -990,16 +1011,16 @@ Utils.convertPointToContext = (point = {}, layer, rootContext=false, includeLaye
 	return point
 
 Utils.convertFrameToContext = (frame = {}, layer, rootContext=false, includeLayer=true) ->
-	frame = _.defaults(frame, {x:0, y:0, width:100, height:100})
+	frame = _.defaults(frame, {x: 0, y: 0, width: 100, height: 100})
 	corners = Utils.pointsFromFrame(frame)
-	convertedCorners = corners.map (point) =>
+	convertedCorners = corners.map (point) ->
 		return Utils.convertPointToContext(point, layer, rootContext, includeLayer)
 	return Utils.frameFromPoints(convertedCorners)
 
 # convert a point from the context level to a layer, with rootContext enabled you can make it cross from the top context
 Utils.convertPointFromContext = (point = {}, layer, rootContext=false, includeLayer=true) ->
 
-	point = _.defaults(point, {x:0, y:0, z:0})
+	point = _.defaults(point, {x: 0, y: 0, z: 0})
 
 	if rootContext and webkitConvertPointFromPageToNode?
 		if includeLayer
@@ -1012,7 +1033,7 @@ Utils.convertPointFromContext = (point = {}, layer, rootContext=false, includeLa
 	ancestors = layer.ancestors(rootContext)
 	ancestors.reverse()
 	ancestors.push(layer) if includeLayer
-	
+
 	for ancestor in ancestors
 		continue unless ancestor.matrix3d
 		point = ancestor.matrix3d.inverse().point(point)
@@ -1021,9 +1042,9 @@ Utils.convertPointFromContext = (point = {}, layer, rootContext=false, includeLa
 
 # convert a frame from the context level to a layer, with rootContext enabled you can make it start from the top context
 Utils.convertFrameFromContext = (frame = {}, layer, rootContext=false, includeLayer=true) ->
-	frame = _.defaults(frame, {x:0, y:0, width:100, height:100})
+	frame = _.defaults(frame, {x: 0, y: 0, width: 100, height: 100})
 	corners = Utils.pointsFromFrame(frame)
-	convertedCorners = corners.map (point) =>
+	convertedCorners = corners.map (point) ->
 		return Utils.convertPointFromContext(point, layer, rootContext, includeLayer)
 	return Utils.frameFromPoints(convertedCorners)
 
@@ -1031,7 +1052,7 @@ Utils.convertFrameFromContext = (frame = {}, layer, rootContext=false, includeLa
 Utils.convertPoint = (input, layerA, layerB, rootContext=false) ->
 
 	# Convert a point between two layer coordinate systems
-	point = _.defaults(input, {x:0, y:0, z:0})
+	point = _.defaults(input, {x: 0, y: 0, z: 0})
 	point = Utils.convertPointToContext(point, layerA, rootContext) if layerA
 	if layerB?
 		return Utils.convertPointFromContext(point, layerB, rootContext)
@@ -1043,7 +1064,7 @@ Utils.convertPoint = (input, layerA, layerB, rootContext=false) ->
 
 # get the bounding frame of a layer, either at the canvas (rootcontext) or screen level
 Utils.boundingFrame = (layer, rootContext=true) ->
-	frame = {x:0, y:0, width:layer.width, height:layer.height}
+	frame = {x: 0, y: 0, width: layer.width, height: layer.height}
 	cornerPoints = Utils.pointsFromFrame(frame)
 	contextCornerPoints = cornerPoints.map (point) ->
 		return Utils.convertPointToContext(point, layer, rootContext)
@@ -1078,7 +1099,7 @@ Utils.globalLayers = (importedLayers) ->
 	for layerName, layer of importedLayers
 
 		# Replace all whitespace in layer names
-		layerName = layerName.replace(/\s/g,"")
+		layerName = layerName.replace(/\s/g, "")
 
 		# Check if there are global variables with the same name
 		if window.hasOwnProperty(layerName) and not window.Framer._globalWarningGiven
@@ -1097,7 +1118,7 @@ Utils.textSize = (text, style={}, constraints={}) ->
 	# returns the rendered text size. This can be pretty slow, so use sporadically.
 	# http://stackoverflow.com/questions/118241/calculate-text-width-with-javascript
 
-	shouldCreateNode = !_textSizeNode
+	shouldCreateNode = not _textSizeNode
 
 	if shouldCreateNode
 		_textSizeNode = document.createElement("div")

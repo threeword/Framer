@@ -1,7 +1,7 @@
 Utils = require "../Utils"
 {BaseClass} = require "../BaseClass"
 
-createTouch = (event, identifier, offset={x:0, y:0}) ->
+createTouch = (event, identifier, offset={x: 0, y: 0}) ->
 	return touch =
 		identifier: identifier
 		target: event.target
@@ -42,12 +42,12 @@ class TouchEmulator extends BaseClass
 		@touchPointerImage = "url('framer/images/cursor@2x.png')"
 		@touchPointerImageActive = "url('framer/images/cursor-active@2x.png')"
 		@touchPointerImageSize = 64
-		@touchPointerInitialOffset = {x:0, y:0}
+		@touchPointerInitialOffset = {x: 0, y: 0}
 
 		@keyPinchCode = 18 # Alt
 		@keyPanCode = 91 # Command
 
-		@context = new Framer.Context(name:"TouchEmulator")
+		@context = new Framer.Context(name: "TouchEmulator")
 		@context._element.style.zIndex = 10000
 		@wrap = @context.domEventManager.wrap
 
@@ -186,21 +186,22 @@ class TouchEmulator extends BaseClass
 		@touchPointLayer.midY = @point.y
 		@touchPointLayer.scale = 1.8
 		@touchPointLayer.animate
-			properties:
-				opacity: 1
-				scale: 1
-				# midX: @point.x + @touchPointerInitialOffset.x
-				# midY: @point.y + @touchPointerInitialOffset.y
-			time: 0.1
-			curve: "ease-out"
+			opacity: 1
+			scale: 1
+			# midX: @point.x + @touchPointerInitialOffset.x
+			# midY: @point.y + @touchPointerInitialOffset.y
+			options:
+				time: 0.1
+				curve: "ease-out"
 
 	hideTouchCursor: ->
+		return unless @touchPointLayer.opacity > 0
 		@touchPointLayer.animateStop()
 		@touchPointLayer.animate
-			properties:
-				opacity: 0
-				scale: 1.2
-			time: 0.08
+			opacity: 0
+			scale: 1.2
+			options:
+				time: 0.08
 
 	mousemovePosition: (event) =>
 		@point =

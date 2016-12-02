@@ -46,10 +46,15 @@ layerProperty = (obj, name, cssProperty, fallback, validator, transformer, optio
 
 			@_properties[name] = value
 
-			if cssProperty != null
+			if cssProperty isnt null
 				@_element.style[cssProperty] = LayerStyle[cssProperty](@)
 
 			set?(@, value)
+
+			# We try to not send any events while we run the constructor, it just
+			# doesn't make sense, because no one can listen to use yet.
+			return if @__constructor
+
 			@emit("change:#{name}", value)
 			@emit("change:point", value) if name in ["x", "y"]
 			@emit("change:size", value)  if name in ["width", "height"]
@@ -79,8 +84,9 @@ class exports.Layer extends BaseClass
 	constructor: (options={}) ->
 
 		# Make sure we never call the constructor twice
-		throw Error("Layer.constructor #{@toInspect()} called twice") if @__constructed
-		@__constructed = true
+		throw Error("Layer.constructor #{@toInspect()} called twice") if @__constructorCalled
+		@__constructorCalled = true
+		@__constructor = true
 
 		# Set needed private variables
 		@_properties = {}
@@ -134,14 +140,28 @@ class exports.Layer extends BaseClass
 
 		@_context.emit("layer:create", @)
 
+		# Make sure the layer is always centered
+		@label = @label
+
+		delete @__constructor
+
 	##############################################################
 	# Properties
 
 	# Readonly context property
 	@define "context", get: -> @_context
 
+	@define "label",
+		get: -> @_label
+		set: (value="") ->
+			@_label = value
+			Utils.labelLayer(@, @_label)
+
 	# A placeholder for layer bound properties defined by the user:
 	@define "custom", @simpleProperty("custom", undefined)
+
+	# Default animation options for every animation of this layer
+	@define "animationOptions", @simpleProperty("animationOptions", {})
 
 	# Css properties
 	@define "width",  layerProperty(@, "width",  "width", 100, _.isNumber)
@@ -149,7 +169,7 @@ class exports.Layer extends BaseClass
 
 	@define "visible", layerProperty(@, "visible", "display", true, _.isBoolean)
 	@define "opacity", layerProperty(@, "opacity", "opacity", 1, _.isNumber)
-	@define "index", layerProperty(@, "index", "zIndex", 0, _.isNumber, null, {importable:false, exportable:false})
+	@define "index", layerProperty(@, "index", "zIndex", 0, _.isNumber, null, {importable: false, exportable: false})
 	@define "clip", layerProperty(@, "clip", "overflow", false, _.isBoolean)
 
 	@define "scrollHorizontal", layerProperty @, "scrollHorizontal", "overflowX", false, _.isBoolean, null, {}, (layer, value) ->
@@ -239,7 +259,7 @@ class exports.Layer extends BaseClass
 		default: ""
 		get: ->
 			name = @_getPropertyValue("name")
-			return name or ""
+			return if name? then "#{name}" else ""
 
 		set: (value) ->
 			@_setPropertyValue("name", value)
@@ -424,7 +444,7 @@ class exports.Layer extends BaseClass
 			@frame = Utils.convertFrameFromContext(frame, @, false, false)
 
 	contentFrame: ->
-		return {x:0, y:0, width:0, height:0} unless @children.length
+		return {x: 0, y: 0, width: 0, height: 0} unless @children.length
 		return Utils.frameMerge(_.map(@children, "frame"))
 
 	totalFrame: ->
@@ -511,7 +531,7 @@ class exports.Layer extends BaseClass
 		frame =
 			x: 0
 			y: 0
-			width:  @width  * @screenScaleX()
+			width: @width  * @screenScaleX()
 			height: @height * @screenScaleY()
 
 		layers = @ancestors(context=true)
@@ -599,8 +619,8 @@ class exports.Layer extends BaseClass
 			# then we turn off ignoreEvents so buttons etc will work.
 
 			# if not (
-			# 	@_elementHTML.childNodes.length == 1 and
-			# 	@_elementHTML.childNodes[0].nodeName == "#text")
+			# 	@_elementHTML.childNodes.length is 1 and
+			# 	@_elementHTML.childNodes[0].nodeName is "#text")
 			# 	@ignoreEvents = false
 
 			@emit "change:html"
@@ -660,7 +680,7 @@ class exports.Layer extends BaseClass
 
 			currentValue = @_getPropertyValue "image"
 
-			if currentValue == value
+			if currentValue is value
 				return @emit "load"
 
 			# Unset the background color only if it’s the default color
@@ -729,6 +749,8 @@ class exports.Layer extends BaseClass
 
 			return if layer is @_parent
 
+			throw Error("Layer.parent: a layer cannot be it's own parent.") if layer is @
+
 			# Check the type
 			if not layer instanceof Layer
 				throw Error "Layer.parent needs to be a Layer object"
@@ -740,15 +762,15 @@ class exports.Layer extends BaseClass
 			if @_parent
 				@_parent._children = _.without @_parent._children, @
 				@_parent._element.removeChild @_element
-				@_parent.emit "change:children", {added:[], removed:[@]}
-				@_parent.emit "change:subLayers", {added:[], removed:[@]}
+				@_parent.emit "change:children", {added: [], removed: [@]}
+				@_parent.emit "change:subLayers", {added: [], removed: [@]}
 
 			# Either insert the element to the new parent element or into dom
 			if layer
 				layer._element.appendChild @_element
 				layer._children.push @
-				layer.emit "change:children", {added:[@], removed:[]}
-				layer.emit "change:subLayers", {added:[@], removed:[]}
+				layer.emit "change:children", {added: [@], removed: []}
+				layer.emit "change:subLayers", {added: [@], removed: []}
 			else
 				@_insertElement()
 
@@ -775,7 +797,7 @@ class exports.Layer extends BaseClass
 
 			# If there is no parent we need to walk through the root
 			if @parent is null
-				return _.filter @_context.getLayers(), (layer) =>
+				return _.filter @_context.layers, (layer) =>
 					layer isnt @ and layer.parent is null
 
 			return _.without @parent.children, @
@@ -806,10 +828,10 @@ class exports.Layer extends BaseClass
 		layer.parent = null
 
 	childrenWithName: (name) ->
-		_.filter @children, (layer) -> layer.name == name
+		_.filter @children, (layer) -> layer.name is name
 
 	siblingsWithName: (name) ->
-		_.filter @siblingLayers, (layer) -> layer.name == name
+		_.filter @siblingLayers, (layer) -> layer.name is name
 
 	ancestors: (context=false) ->
 
@@ -883,35 +905,59 @@ class exports.Layer extends BaseClass
 	##############################################################
 	## ANIMATION
 
-	animate: (options) ->
-		# console.warn "Layer.animate is deprecated: please use Layer.animateTo instead"
-		properties = options.properties
-		delete options.properties
-		@animateTo(properties, options)
+	animate: (properties, options={}) ->
 
-	animateTo: (properties,options={}) ->
-		_.defaults(options,properties.options)
-		delete properties.options
-		options.properties = Animation.filterAnimatableProperties(properties)
-		options.layer = @
+		# If the properties are a string, we assume it's a state name
+		if _.isString(properties)
 
-		start = options.start
-		start ?= true
-		delete options.start
+			stateName = properties
 
-		if options.instant
-			options.animate = false
-		delete options.instant
-		
-		animation = new Animation options
-		animation.start() if start
-		animation
+			# Support options as an object
+			options = options.options if options.options?
 
-	animations: ->
+			return @states.machine.switchTo(stateName, options)
+		# We need to clone the properties so we don't modify them unexpectedly
+		properties = _.clone(properties)
 
+		# Support the old properties syntax, we add all properties top level and
+		# move the options into an options property.
+		if properties.properties?
+			options = properties
+			properties = options.properties
+			delete options.properties
+
+		# With the new api we treat the properties as animatable properties, and use
+		# the special options keyword for animation options.
+		if properties.options?
+			options = _.defaults({}, options, properties.options)
+			delete properties.options
+
+		# Merge the animation options with the default animation options for this layer
+		options = _.defaults({}, options, @animationOptions)
+		options.start ?= true
+
+		animation = new Animation(@, properties, options)
+		animation.start() if options.start
+
+		return animation
+
+	stateCycle: (args...) ->
+		states = _.flatten(args)
+		if _.isObject(_.last(states))
+			options = states.pop()
+		@animate(@states.machine.next(states), options)
+
+	stateSwitch: (stateName, options={}) ->
+		unless stateName?
+			throw new Error("Missing required argument 'stateName' in stateSwitch()")
+		return @animate(stateName, options) if options.animate is true
+		return @animate(stateName, _.defaults({}, options, {instant: true}))
+
+	animations: (includePending=false) ->
 		# Current running animations on this layer
 		_.filter @_context.animations, (animation) =>
-			animation.options.layer is @
+			return false unless (animation.layer is @)
+			return includePending or not animation.isPending
 
 	animatingProperties: ->
 
@@ -966,7 +1012,18 @@ class exports.Layer extends BaseClass
 		enumerable: false
 		exportable: false
 		importable: false
-		get: -> @_states ?= new LayerStates @
+		get: ->
+			@_states ?= new LayerStates(@)
+			return @_states
+		set: (states) ->
+			@states.machine.reset()
+			_.extend(@states, states)
+
+	@define "stateNames",
+		enumerable: false
+		exportable: false
+		importable: false
+		get: -> @states.machine.stateNames
 
 	#############################################################################
 	## Draggable, Pinchable
@@ -1030,19 +1087,19 @@ class exports.Layer extends BaseClass
 				Events.Click, Events.Tap, Events.TapStart, Events.TapEnd,
 				Events.LongPress, Events.LongPressStart, Events.LongPressEnd]
 
-				parentDraggableLayer = @_parentDraggableLayer()
+					parentDraggableLayer = @_parentDraggableLayer()
 
-				if parentDraggableLayer
+					if parentDraggableLayer
 
-					# If we had a reasonable scrolling offset we cancel the click
-					offset = parentDraggableLayer.draggable.offset
-					return if Math.abs(offset.x) > @_cancelClickEventInDragSessionOffset
-					return if Math.abs(offset.y) > @_cancelClickEventInDragSessionOffset
+						# If we had a reasonable scrolling offset we cancel the click
+						offset = parentDraggableLayer.draggable.offset
+						return if Math.abs(offset.x) > @_cancelClickEventInDragSessionOffset
+						return if Math.abs(offset.y) > @_cancelClickEventInDragSessionOffset
 
-					# If there is still some velocity (scroll is moving) we cancel the click
-					velocity = parentDraggableLayer.draggable.velocity
-					return if Math.abs(velocity.x) > @_cancelClickEventInDragSessionVelocity
-					return if Math.abs(velocity.y) > @_cancelClickEventInDragSessionVelocity
+						# If there is still some velocity (scroll is moving) we cancel the click
+						velocity = parentDraggableLayer.draggable.velocity
+						return if Math.abs(velocity.x) > @_cancelClickEventInDragSessionVelocity
+						return if Math.abs(velocity.y) > @_cancelClickEventInDragSessionVelocity
 
 		# Always scope the event this to the layer and pass the layer as
 		# last argument for every event.
@@ -1116,9 +1173,9 @@ class exports.Layer extends BaseClass
 	onAnimationStart: (cb) -> @on(Events.AnimationStart, cb)
 	onAnimationStop: (cb) -> @on(Events.AnimationStop, cb)
 	onAnimationEnd: (cb) -> @on(Events.AnimationEnd, cb)
-	onAnimationDidStart: (cb) -> @on(Events.AnimationDidStart, cb)
-	onAnimationDidStop: (cb) -> @on(Events.AnimationDidStop, cb)
-	onAnimationDidEnd: (cb) -> @on(Events.AnimationDidEnd, cb)
+	onAnimationDidStart: (cb) -> @on(Events.AnimationDidStart, cb) # Deprecated
+	onAnimationDidStop: (cb) -> @on(Events.AnimationDidStop, cb) # Deprecated
+	onAnimationDidEnd: (cb) -> @on(Events.AnimationDidEnd, cb) # Deprecated
 
 	onImageLoaded: (cb) -> @on(Events.ImageLoaded, cb)
 	onImageLoadError: (cb) -> @on(Events.ImageLoadError, cb)
@@ -1135,72 +1192,76 @@ class exports.Layer extends BaseClass
 	onDragAnimationEnd: (cb) -> @on(Events.DragAnimationEnd, cb)
 	onDirectionLockStart: (cb) -> @on(Events.DirectionLockStart, cb)
 
-	onStateDidSwitch: (cb) -> @on(Events.StateDidSwitch, cb)
-	onStateWillSwitch: (cb) -> @on(Events.StateWillSwitch, cb)
+	onStateSwitchStart: (cb) -> @on(Events.StateSwitchStart, cb)
+	onStateSwitchStop: (cb) -> @on(Events.StateSwitchStop, cb)
+	onStateSwitchEnd: (cb) -> @on(Events.StateSwitchEnd, cb)
+
+	onStateWillSwitch: (cb) -> @on(Events.StateSwitchStart, cb) # Deprecated
+	onStateDidSwitch: (cb) -> @on(Events.StateSwitchEnd, cb) # Deprecated
 
 	# Gestures
 
 	# Tap
-	onTap:(cb) -> @on(Events.Tap, cb)
-	onTapStart:(cb) -> @on(Events.TapStart, cb)
-	onTapEnd:(cb) -> @on(Events.TapEnd, cb)
-	onDoubleTap:(cb) -> @on(Events.DoubleTap, cb)
+	onTap: (cb) -> @on(Events.Tap, cb)
+	onTapStart: (cb) -> @on(Events.TapStart, cb)
+	onTapEnd: (cb) -> @on(Events.TapEnd, cb)
+	onDoubleTap: (cb) -> @on(Events.DoubleTap, cb)
 
 	# Force Tap
-	onForceTap:(cb) -> @on(Events.ForceTap, cb)
-	onForceTapChange:(cb) -> @on(Events.ForceTapChange, cb)
-	onForceTapStart:(cb) -> @on(Events.ForceTapStart, cb)
-	onForceTapEnd:(cb) -> @on(Events.ForceTapEnd, cb)
+	onForceTap: (cb) -> @on(Events.ForceTap, cb)
+	onForceTapChange: (cb) -> @on(Events.ForceTapChange, cb)
+	onForceTapStart: (cb) -> @on(Events.ForceTapStart, cb)
+	onForceTapEnd: (cb) -> @on(Events.ForceTapEnd, cb)
 
 	# Press
-	onLongPress:(cb) -> @on(Events.LongPress, cb)
-	onLongPressStart:(cb) -> @on(Events.LongPressStart, cb)
-	onLongPressEnd:(cb) -> @on(Events.LongPressEnd, cb)
+	onLongPress: (cb) -> @on(Events.LongPress, cb)
+	onLongPressStart: (cb) -> @on(Events.LongPressStart, cb)
+	onLongPressEnd: (cb) -> @on(Events.LongPressEnd, cb)
 
 	# Swipe
-	onSwipe:(cb) -> @on(Events.Swipe, cb)
-	onSwipeStart:(cb) -> @on(Events.SwipeStart, cb)
-	onSwipeEnd:(cb) -> @on(Events.SwipeEnd, cb)
+	onSwipe: (cb) -> @on(Events.Swipe, cb)
+	onSwipeStart: (cb) -> @on(Events.SwipeStart, cb)
+	onSwipeEnd: (cb) -> @on(Events.SwipeEnd, cb)
 
-	onSwipeUp:(cb) -> @on(Events.SwipeUp, cb)
-	onSwipeUpStart:(cb) -> @on(Events.SwipeUpStart, cb)
-	onSwipeUpEnd:(cb) -> @on(Events.SwipeUpEnd, cb)
+	onSwipeUp: (cb) -> @on(Events.SwipeUp, cb)
+	onSwipeUpStart: (cb) -> @on(Events.SwipeUpStart, cb)
+	onSwipeUpEnd: (cb) -> @on(Events.SwipeUpEnd, cb)
 
-	onSwipeDown:(cb) -> @on(Events.SwipeDown, cb)
-	onSwipeDownStart:(cb) -> @on(Events.SwipeDownStart, cb)
-	onSwipeDownEnd:(cb) -> @on(Events.SwipeDownEnd, cb)
+	onSwipeDown: (cb) -> @on(Events.SwipeDown, cb)
+	onSwipeDownStart: (cb) -> @on(Events.SwipeDownStart, cb)
+	onSwipeDownEnd: (cb) -> @on(Events.SwipeDownEnd, cb)
 
-	onSwipeLeft:(cb) -> @on(Events.SwipeLeft, cb)
-	onSwipeLeftStart:(cb) -> @on(Events.SwipeLeftStart, cb)
-	onSwipeLeftEnd:(cb) -> @on(Events.SwipeLeftEnd, cb)
+	onSwipeLeft: (cb) -> @on(Events.SwipeLeft, cb)
+	onSwipeLeftStart: (cb) -> @on(Events.SwipeLeftStart, cb)
+	onSwipeLeftEnd: (cb) -> @on(Events.SwipeLeftEnd, cb)
 
-	onSwipeRight:(cb) -> @on(Events.SwipeRight, cb)
-	onSwipeRightStart:(cb) -> @on(Events.SwipeRightStart, cb)
-	onSwipeRightEnd:(cb) -> @on(Events.SwipeRightEnd, cb)
+	onSwipeRight: (cb) -> @on(Events.SwipeRight, cb)
+	onSwipeRightStart: (cb) -> @on(Events.SwipeRightStart, cb)
+	onSwipeRightEnd: (cb) -> @on(Events.SwipeRightEnd, cb)
 
 	# Pan
-	onPan:(cb) -> @on(Events.Pan, cb)
-	onPanStart:(cb) -> @on(Events.PanStart, cb)
-	onPanEnd:(cb) -> @on(Events.PanEnd, cb)
-	onPanLeft:(cb) -> @on(Events.PanLeft, cb)
-	onPanRight:(cb) -> @on(Events.PanRight, cb)
-	onPanUp:(cb) -> @on(Events.PanUp, cb)
-	onPanDown:(cb) -> @on(Events.PanDown, cb)
+	onPan: (cb) -> @on(Events.Pan, cb)
+	onPanStart: (cb) -> @on(Events.PanStart, cb)
+	onPanEnd: (cb) -> @on(Events.PanEnd, cb)
+	onPanLeft: (cb) -> @on(Events.PanLeft, cb)
+	onPanRight: (cb) -> @on(Events.PanRight, cb)
+	onPanUp: (cb) -> @on(Events.PanUp, cb)
+	onPanDown: (cb) -> @on(Events.PanDown, cb)
 
 	# Pinch
-	onPinch:(cb) -> @on(Events.Pinch, cb)
-	onPinchStart:(cb) -> @on(Events.PinchStart, cb)
-	onPinchEnd:(cb) -> @on(Events.PinchEnd, cb)
+	onPinch: (cb) -> @on(Events.Pinch, cb)
+	onPinchStart: (cb) -> @on(Events.PinchStart, cb)
+	onPinchEnd: (cb) -> @on(Events.PinchEnd, cb)
 
 	# Scale
-	onScale:(cb) -> @on(Events.Scale, cb)
-	onScaleStart:(cb) -> @on(Events.ScaleStart, cb)
-	onScaleEnd:(cb) -> @on(Events.ScaleEnd, cb)
+	onScale: (cb) -> @on(Events.Scale, cb)
+	onScaleStart: (cb) -> @on(Events.ScaleStart, cb)
+	onScaleEnd: (cb) -> @on(Events.ScaleEnd, cb)
 
 	# Rotate
-	onRotate:(cb) -> @on(Events.Rotate, cb)
-	onRotateStart:(cb) -> @on(Events.RotateStart, cb)
-	onRotateEnd:(cb) -> @on(Events.RotateEnd, cb)
+	onRotate: (cb) -> @on(Events.Rotate, cb)
+	onRotateStart: (cb) -> @on(Events.RotateStart, cb)
+	onRotateEnd: (cb) -> @on(Events.RotateEnd, cb)
 
 
 	##############################################################
@@ -1223,7 +1284,7 @@ class exports.Layer extends BaseClass
 
 		for parent in @ancestors(context=true)
 			if parent.clip
-				 frame = Utils.frameIntersection(frame, parent.canvasFrame)
+				frame = Utils.frameIntersection(frame, parent.canvasFrame)
 			if not frame
 				return
 
@@ -1252,7 +1313,7 @@ class exports.Layer extends BaseClass
 
 		# Don't show any hints while we are animating
 		if @isAnimating
-			return false 
+			return false
 
 		for parent in @ancestors()
 			return false if parent.isAnimating
@@ -1302,6 +1363,14 @@ class exports.Layer extends BaseClass
 			borderRadius: @borderRadius * Utils.average([@canvasScaleX(), @canvasScaleY()])
 			borderWidth: 3
 
+		# Only show outlines for draggables
+		if @_draggable
+			layer.backgroundColor = null
+
+		# Only show outlines if a highlight is fullscreen
+		if Utils.frameInFrame(@context.canvasFrame, highlightFrame)
+			layer.backgroundColor = null
+
 		animation = layer.animate
 			properties: {opacity: 0}
 			curve: "ease-out"
@@ -1313,10 +1382,13 @@ class exports.Layer extends BaseClass
 	##############################################################
 	## DESCRIPTOR
 
+	toName: ->
+		return name if @name
+		return @__framerInstanceInfo?.name or ""
+
 	toInspect: (constructor) ->
 		constructor ?= @constructor.name
 		name = if @name then "name:#{@name} " else ""
-		variablename = @__framerInstanceInfo?.name or ""
-		return "<#{constructor} #{variablename} id:#{@id} #{name}
-			(#{Utils.roundWhole(@x)},#{Utils.roundWhole(@y)})
+		return "<#{constructor} #{@toName()} id:#{@id} #{name}
+			(#{Utils.roundWhole(@x)}, #{Utils.roundWhole(@y)})
 			#{Utils.roundWhole(@width)}x#{Utils.roundWhole(@height)}>"

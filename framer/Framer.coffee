@@ -7,6 +7,7 @@ Framer._ = _
 Framer.Utils = (require "./Utils")
 Framer.Color = (require "./Color").Color
 Framer.Layer = (require "./Layer").Layer
+Framer._Layer = Framer.Layer # So it won't be overridden by MobileScrollFix
 Framer.BackgroundLayer = (require "./BackgroundLayer").BackgroundLayer
 Framer.VideoLayer = (require "./VideoLayer").VideoLayer
 Framer.SVGLayer = (require "./SVGLayer").SVGLayer
@@ -14,6 +15,7 @@ Framer.Events = (require "./Events").Events
 Framer.Gestures = (require "./Gestures").Gestures
 Framer.Animation = (require "./Animation").Animation
 Framer.AnimationGroup = (require "./AnimationGroup").AnimationGroup
+Framer.AnimationStateGroup = (require "./AnimationGroup").AnimationStateGroup
 Framer.Screen = (require "./Screen").Screen
 Framer.Align = (require "./Align").Align
 Framer.print = (require "./Print").print
@@ -24,7 +26,7 @@ Framer.PageComponent = (require "./Components/PageComponent").PageComponent
 Framer.SliderComponent = (require "./Components/SliderComponent").SliderComponent
 Framer.DeviceComponent = (require "./Components/DeviceComponent").DeviceComponent
 Framer.GridComponent = (require "./Components/GridComponent").GridComponent
-Framer.NavComponent = (require "./Components/NavComponent").NavComponent
+Framer.FlowComponent = (require "./Components/FlowComponent").FlowComponent
 Framer.CircularProgressComponent = (require "./Components/CircularProgressComponent").CircularProgressComponent
 Framer.MIDIComponent = (require "./Components/MIDIComponent").MIDIComponent
 Framer.DeviceView = Framer.DeviceComponent # Compat
@@ -63,7 +65,7 @@ Framer.resetDefaults = Defaults.reset
 
 # Create the default context, set it to invisble by default so
 # the preloader can pick it up if it needs to.
-Framer.DefaultContext = new Framer.Context(name:"Default")
+Framer.DefaultContext = new Framer.Context(name: "Default")
 Framer.DefaultContext.backgroundColor = "white"
 Framer.DefaultContext.visible = false
 Framer.CurrentContext = Framer.DefaultContext

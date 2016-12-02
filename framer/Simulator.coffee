@@ -15,8 +15,9 @@ class exports.Simulator extends BaseClass
 		get: -> _.clone(@_state)
 		set: (state) -> @_state = _.clone(state)
 
+
 	constructor: (options={}) ->
-		@_state = {x:0, v:0}
+		@_state = {x: 0, v: 0}
 		@options = null
 		@setup(options)
 
@@ -28,3 +29,6 @@ class exports.Simulator extends BaseClass
 
 	finished: ->
 		throw Error "Not implemented"
+
+	setState: (state) ->
+		@_state = state

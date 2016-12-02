@@ -37,11 +37,9 @@ class exports.Context extends BaseClass
 
 	@all = -> return _.clone(Contexts)
 
-	@define "parent",
-		get: -> @_parent
+	@define "parent", get: -> @_parent
 
-	@define "element",
-		get: -> @_element
+	@define "element", get: -> @_element
 
 	constructor: (options={}) ->
 
@@ -73,6 +71,7 @@ class exports.Context extends BaseClass
 		@_createDOMEventManager()
 		@_createRootElement()
 
+		@resetFrozenEvents()
 		@resetLayers()
 		@resetAnimations()
 		@resetTimers()
@@ -148,6 +147,8 @@ class exports.Context extends BaseClass
 		return unless @_animations
 		@_animations.map (animation) -> animation.stop(true)
 
+	resetFrozenEvents: ->
+		delete @_frozenEvents
 
 	# Timers
 	@define "timers", get: -> _.clone(@_timers)
@@ -237,7 +238,7 @@ class exports.Context extends BaseClass
 				for listener in listeners
 					layer.on(eventName, listener)
 
-		delete @_frozenEvents
+		@resetFrozenEvents()
 
 
 	##############################################################
@@ -303,7 +304,7 @@ class exports.Context extends BaseClass
 			return @parent.height if @parent?
 			return window.innerHeight
 
-	@define "frame", get: -> {x:0, y:0, width:@width, height:@height}
+	@define "frame", get: -> {x: 0, y: 0, width: @width, height: @height}
 	@define "size",  get: -> _.pick(@frame, ["width", "height"])
 	@define "point", get: -> _.pick(@frame, ["x", "y"])
 	@define "canvasFrame",
@@ -342,8 +343,8 @@ class exports.Context extends BaseClass
 
 	@define "perspectiveOriginY",
 		get: ->
-				return @_perspectiveOriginY if _.isNumber(@_perspectiveOriginY)
-				return .5
+			return @_perspectiveOriginY if _.isNumber(@_perspectiveOriginY)
+			return .5
 		set: (value) ->
 			if _.isNumber(value)
 				@_perspectiveOriginY = value
@@ -361,7 +362,7 @@ class exports.Context extends BaseClass
 	toInspect: ->
 
 		round = (value) ->
-			if parseInt(value) == value
+			if parseInt(value) is value
 				return parseInt(value)
 			return Utils.round(value, 1)
 

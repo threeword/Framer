@@ -8,7 +8,7 @@ class MIDIInput extends BaseClass
 	@define "enabled",
 		get: -> @_inputs?.length or @_request
 		set: (value) ->
-			return unless value != @enabled
+			return unless value isnt @enabled
 			return @_requestRejected() if not navigator.requestMIDIAccess
 			if value
 				@_request = navigator.requestMIDIAccess().then @_requestResolved, @_requestRejected
@@ -27,7 +27,7 @@ class MIDIInput extends BaseClass
 
 	# Failure handlers
 
-	_requestRejected: (error) =>
+	_requestRejected: (error) ->
 		throw Error "Requesting MIDI access failed: #{error ? "not supported by browser"}"
 
 	# Event handlers

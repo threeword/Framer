@@ -77,11 +77,11 @@ class exports.DeviceComponent extends BaseClass
 		@background.classList.add("DeviceBackground")
 
 		@hands    = new Layer
-		@handsImageLayer = new Layer parent:@hands
-		@phone    = new Layer parent:@hands
-		@screen   = new Layer parent:@phone
-		@viewport = new Layer parent:@screen
-		@content  = new Layer parent:@viewport
+		@handsImageLayer = new Layer parent: @hands
+		@phone    = new Layer parent: @hands
+		@screen   = new Layer parent: @phone
+		@viewport = new Layer parent: @screen
+		@content  = new Layer parent: @viewport
 
 		@hands.backgroundColor = "transparent"
 		@hands._alwaysUseImageCache = true
@@ -109,7 +109,7 @@ class exports.DeviceComponent extends BaseClass
 		for layer in [@background, @phone, @viewport, @content, @screen]
 			layer.on "touchmove", (event) -> event.preventDefault()
 
-		@_context = new Framer.Context(parent:@content, name:"DeviceScreen")
+		@_context = new Framer.Context(parent: @content, name: "DeviceScreen")
 		@_context.perspective = 1200
 		@_context.device = @
 
@@ -141,6 +141,7 @@ class exports.DeviceComponent extends BaseClass
 			@background.width  = window.innerWidth  + (2 * backgroundOverlap)
 			@background.height = window.innerHeight + (2 * backgroundOverlap)
 
+			@_updateDeviceImage()
 			@hands.scale = @_calculatePhoneScale()
 			@hands.center()
 			@phone.center()
@@ -156,7 +157,7 @@ class exports.DeviceComponent extends BaseClass
 			@content.height = height
 			@screen.center()
 
-			@setHand(@selectedHand) if @selectedHand && @_orientation == 0
+			@setHand(@selectedHand) if @selectedHand and @_orientation is 0
 
 	_shouldRenderFullScreen: ->
 
@@ -169,6 +170,9 @@ class exports.DeviceComponent extends BaseClass
 		if @deviceType is "fullscreen"
 			return true
 
+		if Utils.isInsideIframe()
+			return false
+
 		if Utils.deviceType() is "phone" and Utils.deviceType() is @_device.deviceType
 			return true
 
@@ -176,6 +180,9 @@ class exports.DeviceComponent extends BaseClass
 			return true
 
 		if Utils.deviceType() is "phone" and @_device.deviceType is "tablet"
+			return true
+
+		if @_device.screenWidth is Canvas.width and @_device.screenHeight is Canvas.height
 			return true
 
 		return false
@@ -252,7 +259,7 @@ class exports.DeviceComponent extends BaseClass
 				lDevicetype = deviceType.toLowerCase()
 				for key in _.keys(Devices)
 					lKey = key.toLowerCase()
-					device = Devices[key] if lDevicetype == lKey
+					device = Devices[key] if lDevicetype is lKey
 
 			if not device
 				throw Error "No device named #{deviceType}. Options are: #{_.keys Devices}"
@@ -314,7 +321,7 @@ class exports.DeviceComponent extends BaseClass
 			return name
 
 		# If this device is added by the user we use the name as it is
-		if @_deviceType not in BuiltInDevices
+		if @_deviceType not in BuiltInDevices or @_deviceType is "custom"
 			return name
 
 		# We want to get these image from our public resources server
@@ -322,13 +329,13 @@ class exports.DeviceComponent extends BaseClass
 
 		# If we are running a local copy of Framer from the drive, get the resource online
 		if Utils.isFileUrl(window.location.href)
-			resourceUrl = "http://#{resourceUrl}"
+			resourceUrl = "http:#{resourceUrl}"
 
 		# If we're running Framer Studio and have local files, we'd like to use those.
 		# For now we always use jp2 inside framer stusio
 		if Utils.isFramerStudio() and window.FramerStudioInfo
-			if @_device.minStudioVersion and Utils.framerStudioVersion() >= @_device.minStudioVersion or !@_device.minStudioVersion
-				if @_device.maxStudioVersion and Utils.framerStudioVersion() <= @_device.maxStudioVersion or !@_device.maxStudioVersion
+			if @_device.minStudioVersion and Utils.framerStudioVersion() >= @_device.minStudioVersion or not @_device.minStudioVersion
+				if @_device.maxStudioVersion and Utils.framerStudioVersion() <= @_device.maxStudioVersion or not @_device.maxStudioVersion
 					resourceUrl = window.FramerStudioInfo.deviceImagesUrl
 					return "#{resourceUrl}/#{name.replace(".png", ".jp2")}"
 
@@ -353,12 +360,12 @@ class exports.DeviceComponent extends BaseClass
 
 	setDeviceScale: (deviceScale, animate=false) ->
 
-		if deviceScale == "fit" or deviceScale < 0
+		if deviceScale is "fit" or deviceScale < 0
 			deviceScale = "fit"
 		else
 			deviceScale = parseFloat(deviceScale)
 
-		if deviceScale == @_deviceScale
+		if deviceScale is @_deviceScale
 			return
 
 		@_deviceScale = deviceScale
@@ -366,7 +373,7 @@ class exports.DeviceComponent extends BaseClass
 		if @_shouldRenderFullScreen()
 			return
 
-		if deviceScale == "fit"
+		if deviceScale is "fit"
 			phoneScale = @_calculatePhoneScale()
 		else
 			phoneScale = deviceScale
@@ -375,7 +382,7 @@ class exports.DeviceComponent extends BaseClass
 
 		if animate
 			@hands.animate _.extend @animationOptions,
-				properties: {scale:phoneScale}
+				properties: {scale: phoneScale}
 		else
 			@hands.scale = phoneScale
 			@hands.center()
@@ -448,12 +455,12 @@ class exports.DeviceComponent extends BaseClass
 
 	setOrientation: (orientation, animate=false) ->
 
-		orientation *= -1 if Utils.framerStudioVersion() == oldDeviceMaxVersion
+		orientation *= -1 if Utils.framerStudioVersion() is oldDeviceMaxVersion
 
-		if orientation == "portrait"
+		if orientation is "portrait"
 			orientation = 0
 
-		if orientation == "landscape"
+		if orientation is "landscape"
 			orientation = 90
 
 		if @_shouldRenderFullScreen()
@@ -493,7 +500,7 @@ class exports.DeviceComponent extends BaseClass
 			@viewport.props = contentProperties
 			@_update()
 
-		@handsImageLayer.image = "" if @_orientation != 0
+		@handsImageLayer.image = "" if @_orientation isnt 0
 
 		@emit("change:orientation", @_orientation)
 
@@ -505,7 +512,7 @@ class exports.DeviceComponent extends BaseClass
 		@content.height = height
 
 		offset = (@screen.width - width) / 2
-		offset *= -1 if @_orientation == -90
+		offset *= -1 if @_orientation is -90
 
 		[x, y] = [0, 0]
 
@@ -524,7 +531,7 @@ class exports.DeviceComponent extends BaseClass
 		@emit("change:orientation", window.orientation)
 
 	@define "isPortrait", get: -> Math.abs(@orientation) % 180 is 0
-	@define "isLandscape", get: -> !@isPortrait
+	@define "isLandscape", get: -> not @isPortrait
 
 	@define "orientationName",
 		get: ->
@@ -564,7 +571,7 @@ class exports.DeviceComponent extends BaseClass
 
 	setHand: (hand) ->
 		@selectedHand = hand
-		return @handsImageLayer.image = "" if !hand or !@handSwitchingSupported()
+		return @handsImageLayer.image = "" if not hand or not @handSwitchingSupported()
 
 		handData = @_device.hands[hand]
 		if handData
@@ -606,6 +613,8 @@ class exports.DeviceComponent extends BaseClass
 ###########################################################################
 # DEVICE CONFIGURATIONS
 
+googlePixelReleaseVersion = 75
+desktopReleaseVersion = 70
 newDeviceMinVersion = 53
 oldDeviceMaxVersion = 52
 
@@ -636,6 +645,38 @@ iPadProBaseDevice =
 	deviceType: "tablet"
 	minStudioVersion: newDeviceMinVersion
 
+iPhone7BaseDevice =
+	deviceImageWidth: 874
+	deviceImageHeight: 1792
+	deviceImageCompression: true
+	screenWidth: 750
+	screenHeight: 1334
+	deviceType: "phone"
+	minStudioVersion: 71
+	hands:
+		"iphone-hands-2":
+			width: 2400
+			height: 3740
+		"iphone-hands-1":
+			width: 2400
+			height: 3740
+
+iPhone7PlusBaseDevice =
+	deviceImageWidth: 1452
+	deviceImageHeight: 2968
+	deviceImageCompression: true
+	screenWidth: 1242
+	screenHeight: 2208
+	deviceType: "phone"
+	minStudioVersion: 71
+	hands:
+		"iphone-hands-2":
+			width: 3987
+			height: 6212
+		"iphone-hands-1":
+			width: 3987
+			height: 6212
+
 iPhone6BaseDevice =
 	deviceImageWidth: 874
 	deviceImageHeight: 1792
@@ -646,10 +687,10 @@ iPhone6BaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  2400
+			width: 2400
 			height: 3740
 		"iphone-hands-1":
-			width:  2400
+			width: 2400
 			height: 3740
 
 iPhone6PlusBaseDevice =
@@ -662,10 +703,10 @@ iPhone6PlusBaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  3987
+			width: 3987
 			height: 6212
 		"iphone-hands-1":
-			width:  3987
+			width: 3987
 			height: 6212
 
 iPhone5BaseDevice =
@@ -678,11 +719,11 @@ iPhone5BaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  2098
+			width: 2098
 			height: 3269
 			offset: 19
 		"iphone-hands-1":
-			width:  2098
+			width: 2098
 			height: 3269
 			offset: 19
 
@@ -696,11 +737,11 @@ iPhone5CBaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  2098
+			width: 2098
 			height: 3269
 			offset: 28
 		"iphone-hands-1":
-			width:  2098
+			width: 2098
 			height: 3269
 			offset: 28
 
@@ -714,11 +755,11 @@ Nexus4BaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  2362
+			width: 2362
 			height: 3681
 			offset: -52
 		"iphone-hands-1":
-			width:  2362
+			width: 2362
 			height: 3681
 			offset: -52
 
@@ -732,11 +773,11 @@ Nexus5BaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  3292
+			width: 3292
 			height: 5130
 			offset: 8
 		"iphone-hands-1":
-			width:  3292
+			width: 3292
 			height: 5130
 			offset: 8
 
@@ -750,13 +791,31 @@ Nexus6BaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  4304
+			width: 4304
 			height: 6707
 			offset: 8
 		"iphone-hands-1":
-			width:  4304
+			width: 4304
 			height: 6707
 			offset: 8
+
+PixelBaseDevice =
+	deviceImageWidth: 1224
+	deviceImageHeight: 2492
+	deviceImageCompression: true
+	screenWidth: 1080
+	screenHeight: 1920
+	deviceType: "phone"
+	minStudioVersion: googlePixelReleaseVersion
+	hands:
+		"iphone-hands-2":
+			width: 3344
+			height: 5211
+			offset: 23
+		"iphone-hands-1":
+			width: 3344
+			height: 5211
+			offset: 23
 
 Nexus9BaseDevice =
 	deviceImageWidth: 1896
@@ -777,11 +836,11 @@ HTCa9BaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  3436
+			width: 3436
 			height: 5354
 			offset: 36
 		"iphone-hands-1":
-			width:  3436
+			width: 3436
 			height: 5354
 			offset: 36
 
@@ -795,11 +854,11 @@ HTCm8BaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  3436
+			width: 3436
 			height: 5354
 			offset: 12
 		"iphone-hands-1":
-			width:  3436
+			width: 3436
 			height: 5354
 			offset: 12
 
@@ -813,11 +872,11 @@ MSFTLumia950BaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  4494
+			width: 4494
 			height: 7003
 			offset: -84
 		"iphone-hands-1":
-			width:  4494
+			width: 4494
 			height: 7003
 			offset: -84
 
@@ -831,13 +890,29 @@ SamsungGalaxyNote5BaseDevice =
 	minStudioVersion: newDeviceMinVersion
 	hands:
 		"iphone-hands-2":
-			width:  4279
+			width: 4279
 			height: 6668
 			offset: -24
 		"iphone-hands-1":
-			width:  4279
+			width: 4279
 			height: 6668
 			offset: -84
+
+AppleWatchSeries242Device =
+	deviceImageWidth: 512
+	deviceImageHeight: 990
+	deviceImageCompression: true
+	screenWidth: 312
+	screenHeight: 390
+	minStudioVersion: 71
+
+AppleWatchSeries238Device =
+	deviceImageWidth: 472
+	deviceImageHeight: 772
+	deviceImageCompression: true
+	screenWidth: 272
+	screenHeight: 340
+	minStudioVersion: 71
 
 AppleWatch42Device =
 	deviceImageWidth: 512
@@ -870,7 +945,7 @@ AppleMacBook =
 	screenWidth: 2304
 	screenHeight: 1440
 	deviceType: "computer"
-	minStudioVersion: newDeviceMinVersion
+	minStudioVersion: desktopReleaseVersion
 
 AppleMacBookAir =
 	deviceImageWidth: 2000
@@ -879,7 +954,7 @@ AppleMacBookAir =
 	screenWidth: 1440
 	screenHeight: 900
 	deviceType: "computer"
-	minStudioVersion: newDeviceMinVersion
+	minStudioVersion: desktopReleaseVersion
 
 AppleMacBookPro =
 	deviceImageWidth: 3820
@@ -888,7 +963,7 @@ AppleMacBookPro =
 	screenWidth: 2880
 	screenHeight: 1800
 	deviceType: "computer"
-	minStudioVersion: newDeviceMinVersion
+	minStudioVersion: desktopReleaseVersion
 
 AppleIMac =
 	deviceImageWidth: 2800
@@ -897,7 +972,7 @@ AppleIMac =
 	screenWidth: 2560
 	screenHeight: 1440
 	deviceType: "computer"
-	minStudioVersion: newDeviceMinVersion
+	minStudioVersion: desktopReleaseVersion
 
 DellXPS =
 	deviceImageWidth: 5200
@@ -906,7 +981,7 @@ DellXPS =
 	screenWidth: 3840
 	screenHeight: 2160
 	deviceType: "computer"
-	minStudioVersion: newDeviceMinVersion
+	minStudioVersion: desktopReleaseVersion
 
 SonyW85OC =
 	deviceImageWidth: 1320
@@ -914,7 +989,7 @@ SonyW85OC =
 	deviceImageCompression: true
 	screenWidth: 1280
 	screenHeight: 720
-	minStudioVersion: newDeviceMinVersion
+	minStudioVersion: desktopReleaseVersion
 
 ###########################################################################
 # OLD DEVICE CONFIGURATIONS
@@ -1061,7 +1136,7 @@ Devices =
 	"fullscreen":
 		name: "Fullscreen"
 		deviceType: "desktop"
-		backgroundColor: "white"
+		backgroundColor: "transparent"
 
 	"custom":
 		name: "Custom"
@@ -1086,13 +1161,27 @@ Devices =
 	"apple-ipad-pro-gold": _.clone(iPadProBaseDevice)
 	"apple-ipad-pro-space-gray": _.clone(iPadProBaseDevice)
 
-	# iPhone 6
+	# iPhone 7
+	"apple-iphone-7-gold": _.clone(iPhone7BaseDevice)
+	"apple-iphone-7-rose-gold": _.clone(iPhone7BaseDevice)
+	"apple-iphone-7-silver": _.clone(iPhone7BaseDevice)
+	"apple-iphone-7-black": _.clone(iPhone7BaseDevice)
+	"apple-iphone-7-jet-black": _.clone(iPhone7BaseDevice)
+
+	# iPhone 7 Plus
+	"apple-iphone-7-plus-gold": _.clone(iPhone7PlusBaseDevice)
+	"apple-iphone-7-plus-rose-gold": _.clone(iPhone7PlusBaseDevice)
+	"apple-iphone-7-plus-silver": _.clone(iPhone7PlusBaseDevice)
+	"apple-iphone-7-plus-black": _.clone(iPhone7PlusBaseDevice)
+	"apple-iphone-7-plus-jet-black": _.clone(iPhone7PlusBaseDevice)
+
+	# iPhone 6s
 	"apple-iphone-6s-gold": _.clone(iPhone6BaseDevice)
 	"apple-iphone-6s-rose-gold": _.clone(iPhone6BaseDevice)
-	"apple-iphone-6s-silver" : _.clone(iPhone6BaseDevice)
+	"apple-iphone-6s-silver": _.clone(iPhone6BaseDevice)
 	"apple-iphone-6s-space-gray": _.clone(iPhone6BaseDevice)
 
-	# iPhone 6+
+	# iPhone 6s Plus
 	"apple-iphone-6s-plus-gold": _.clone(iPhone6PlusBaseDevice)
 	"apple-iphone-6s-plus-rose-gold": _.clone(iPhone6PlusBaseDevice)
 	"apple-iphone-6s-plus-silver": _.clone(iPhone6PlusBaseDevice)
@@ -1109,6 +1198,50 @@ Devices =
 	"apple-iphone-5c-red": _.clone(iPhone5CBaseDevice)
 	"apple-iphone-5c-white": _.clone(iPhone5CBaseDevice)
 	"apple-iphone-5c-yellow": _.clone(iPhone5CBaseDevice)
+
+	# Apple Watch Series 2 38mm
+	"apple-watch-series-2-38mm-black-steel-black": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-edition": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-rose-gold-aluminum-midnight-blue": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-silver-aluminum-cocoa": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-silver-aluminum-concrete": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-silver-aluminum-ocean-blue": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-silver-aluminum-red": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-silver-aluminum-turquoise": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-silver-aluminum-white": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-silver-aluminum-yellow": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-space-gray-aluminum-black": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-sport-aluminum-walnut": _.clone(AppleWatchSeries238Device)
+	"apple-watch-series-2-38mm-steel-white": _.clone(AppleWatchSeries238Device)
+
+	# Apple Watch Series 2 42mm
+	"apple-watch-series-2-42mm-edition": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-gold-aluminum-cocoa": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-rose-gold-aluminum-midnight-blue": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-silver-aluminum-concrete": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-silver-aluminum-green": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-silver-aluminum-light-pink": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-silver-aluminum-ocean-blue": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-silver-aluminum-pink-sand": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-silver-aluminum-red": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-silver-aluminum-turquoise": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-silver-aluminum-white": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-silver-aluminum-yellow": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-space-black-steel-black": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-space-gray-aluminum-black": _.clone(AppleWatchSeries242Device)
+	"apple-watch-series-2-42mm-steel-white": _.clone(AppleWatchSeries242Device)
+
+	# Apple Watch Nike+ 38mm
+	"apple-watch-nike-plus-38mm-silver-aluminum-flat-silver-volt": _.clone(AppleWatchSeries238Device)
+	"apple-watch-nike-plus-38mm-silver-aluminum-flat-silver-white": _.clone(AppleWatchSeries238Device)
+	"apple-watch-nike-plus-38mm-space-gray-aluminum-black-cool-gray": _.clone(AppleWatchSeries238Device)
+	"apple-watch-nike-plus-38mm-space-gray-aluminum-black-volt": _.clone(AppleWatchSeries238Device)
+
+	# Apple Watch Nike+ 42mm
+	"apple-watch-nike-plus-42mm-silver-aluminum-flat-silver-volt": _.clone(AppleWatchSeries242Device)
+	"apple-watch-nike-plus-42mm-silver-aluminum-flat-silver-white": _.clone(AppleWatchSeries242Device)
+	"apple-watch-nike-plus-42mm-space-gray-aluminum-black-cool-gray": _.clone(AppleWatchSeries242Device)
+	"apple-watch-nike-plus-42mm-space-gray-aluminum-black-volt": _.clone(AppleWatchSeries242Device)
 
 	# Apple Watch 38mm
 
@@ -1151,6 +1284,11 @@ Devices =
 	"google-nexus-5x": _.clone(Nexus5BaseDevice)
 	"google-nexus-6p": _.clone(Nexus6BaseDevice)
 	"google-nexus-9": _.clone(Nexus9BaseDevice)
+
+	# Pixel
+	"google-pixel-quite-black": _.clone(PixelBaseDevice)
+	"google-pixel-really-blue": _.clone(PixelBaseDevice)
+	"google-pixel-very-silver": _.clone(PixelBaseDevice)
 
 	# HTC ONE A9
 	"htc-one-a9-black": _.clone(HTCa9BaseDevice)
@@ -1231,7 +1369,7 @@ Devices =
 
 	# iPhone 5S
 	"iphone-5s-spacegray": _.clone(old_iPhone5BaseDevice)
-	"iphone-5s-spacegray-hand":_.clone(old_iPhone5BaseDeviceHand)
+	"iphone-5s-spacegray-hand": _.clone(old_iPhone5BaseDeviceHand)
 	"iphone-5s-silver": _.clone(old_iPhone5BaseDevice)
 	"iphone-5s-silver-hand": _.clone(old_iPhone5BaseDeviceHand)
 	"iphone-5s-gold": _.clone(old_iPhone5BaseDevice)

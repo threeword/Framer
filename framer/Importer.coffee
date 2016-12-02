@@ -8,7 +8,7 @@ open -a Google\ Chrome -–allow-file-access-from-files
 
 resizeFrame = (scale, frame) ->
 
-	return frame if scale == 1
+	return frame if scale is 1
 
 	result = {}
 
@@ -22,7 +22,7 @@ getScaleFromName = (str) ->
 
 	re = /@([\d]+|[\d]+.[\d]+)x/
 	m = undefined
-	if (m = re.exec(str)) != null
+	if (m = re.exec(str)) isnt null
 		return parseFloat(m[1]) if m[1]
 
 	return null
@@ -147,11 +147,11 @@ class exports.Importer
 		layer.__framerImportedFromPath = @path
 
 		# Set scroll to true if scroll is in the layer name
-		if layerInfo.name.toLowerCase().indexOf("scroll") != -1
+		if layerInfo.name.toLowerCase().indexOf("scroll") isnt -1
 			layer.scroll = true
 
 		# Set draggable enabled if draggable is in the name
-		if layerInfo.name.toLowerCase().indexOf("draggable") != -1
+		if layerInfo.name.toLowerCase().indexOf("draggable") isnt -1
 			layer.draggable.enabled = true
 
 		# A layer without an image, mask or children should be zero
@@ -164,7 +164,7 @@ class exports.Importer
 		# If this is an artboard we retain the size, but set the coordinates to zero
 		# because all coordinates within artboards are 0, 0 based.
 		if info.kind is "artboard"
-			layer.point = {x:0, y:0}
+			layer.point = {x: 0, y: 0}
 
 		# If this is not an artboard, and does not have an image or mask, we clip the
 		# layer to its content size.
@@ -190,10 +190,10 @@ class exports.Importer
 
 		return unless leftMostLayer
 
-		# Calculate the artboard positions to always be 0,0.
+		# Calculate the artboard positions to always be 0, 0.
 		pointOffset = leftMostLayer.point
 
-		# Correct the artboard positions to 0,0.
+		# Correct the artboard positions to 0, 0.
 		for layer in layers
 			if layer._info.kind is "artboard"
 				layer.x -= pointOffset.x

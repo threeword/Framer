@@ -17,7 +17,7 @@ chai.should()
 chai.config.truncateThreshold = 2
 chai.config.showDiff = true
 
-mocha.setup({ui:"bdd", bail:true, reporter:"dot"})
+mocha.setup({ui: "bdd", bail: true, reporter: "dot"})
 mocha.globals(["__import__"])
 
 window.print = (args...) ->
@@ -30,15 +30,19 @@ require "./tests/BaseClassTest"
 require "./tests/LayerTest"
 require "./tests/LayerEventsTest"
 require "./tests/LayerStatesTest"
+require "./tests/LayerStatesBackwardsTest"
 require "./tests/LayerGesturesTest"
 require "./tests/VideoLayerTest"
 require "./tests/ImporterTest"
 require "./tests/LayerAnimationTest"
+require "./tests/LayerDraggableTest"
 require "./tests/ContextTest"
 require "./tests/ScrollComponentTest"
+require "./tests/PageComponentTest"
 require "./tests/VersionTest"
 require "./tests/ColorTest"
 require "./tests/DeviceComponentTest"
 require "./tests/SliderComponentTest"
+require "./tests/FlowComponentTest"
 
 mocha.run()
