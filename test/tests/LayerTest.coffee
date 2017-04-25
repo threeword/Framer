@@ -276,6 +276,23 @@ describe "Layer", ->
 			layer.style["background-image"].indexOf("data:").should.not.equal(-1)
 			layer.style["background-image"].indexOf("?nocache=").should.equal(-1)
 
+		
+		it "should append nocache with an ampersand if url params already exist", (done) ->
+			
+			prefix = "../"
+			imagePath = "static/test.png?param=foo"
+			fullPath = prefix + imagePath
+			layer = new Layer
+
+			layer.on Events.ImageLoaded, ->
+				layer.style["background-image"].indexOf(imagePath).should.not.equal(-1)
+				layer.style["background-image"].indexOf("file://").should.not.equal(-1)
+				layer.style["background-image"].indexOf("&nocache=").should.not.equal(-1)
+				done()
+
+			layer.image = fullPath
+			layer.image.should.equal fullPath
+
 
 		it "should cancel loading when setting image to null", (done) ->
 			prefix = "../"
@@ -1132,6 +1149,18 @@ describe "Layer", ->
 			boundingBox.y.should.eql 98
 			boundingBox.width.should.eql 133
 			boundingBox.height.should.eql 144
+
+		it "should use Framer.Defaults when setting the screen frame", ->
+			Framer.Defaults.Layer.width = 300
+			Framer.Defaults.Layer.height = 400
+			box = new Layer
+				screenFrame:
+					x: 123
+			box.stateCycle()
+			box.x.should.equal 123
+			box.width.should.equal 300
+			box.height.should.equal 400
+			Framer.resetDefaults()
 
 		it "should have the correct canvas frame", ->
 

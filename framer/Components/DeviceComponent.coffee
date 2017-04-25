@@ -75,6 +75,7 @@ class exports.DeviceComponent extends BaseClass
 		@background.clip = true
 		@background.backgroundColor = "transparent"
 		@background.classList.add("DeviceBackground")
+		@_previousBackgroundColor = @background.backgroundColor
 
 		@hands    = new Layer
 		@handsImageLayer = new Layer parent: @hands
@@ -192,6 +193,19 @@ class exports.DeviceComponent extends BaseClass
 		# into the device screen
 		Framer.CurrentContext = @_context
 
+	platform: ->
+		if /google|nexus|htc|samsung/.test(@deviceType)
+			return "Android"
+		if /iphone|ipad/.test(@deviceType)
+			return "iOS"
+		if /apple-watch|applewatch/.test(@deviceType)
+			return "watchOS"
+		if /apple|safari/.test(@deviceType)
+			return "macOS"
+		if /microsoft|dell/.test(@deviceType)
+			return "Windows"
+		return null
+
 	###########################################################################
 	# FULLSCREEN
 
@@ -294,7 +308,7 @@ class exports.DeviceComponent extends BaseClass
 		if /PhantomJS/.test(navigator.userAgent)
 			return
 
-		if @_shouldRenderFullScreen()
+		if @_shouldRenderFullScreen() or @hideBezel
 			@phone.image  = ""
 			@hands.image  = ""
 		else if not @_deviceImageUrl(@_deviceImageName())
@@ -348,6 +362,30 @@ class exports.DeviceComponent extends BaseClass
 
 		return "#{resourceUrl}/#{name}"
 
+	@define "hideBezel",
+		get: ->
+			return (@_hideBezel ? false) and Utils.isFramerStudio()
+		set: (hideBezel) ->
+			@_hideBezel = hideBezel
+			if @_hideBezel
+				@_previousBackgroundColor = @background.backgroundColor
+				@background.backgroundColor = @screen.backgroundColor
+				@screen.on "change:backgroundColor", (color) =>
+					# Hacky way to keep the prev backgroundColor
+					prev = @_previousBackgroundColor
+					@background.backgroundColor = color
+					@_previousBackgroundColor = prev
+				@background.on "change:backgroundColor", (color) =>
+					@_previousBackgroundColor = color
+					@background.backgroundColor = @screen.backgroundColor
+			else
+				@screen.off "change:backgroundColor"
+				@background.off "change:backgroundColor"
+				if @_previousBackgroundColor?
+					@background.backgroundColor = @_previousBackgroundColor
+
+			@_update()
+
 	###########################################################################
 	# DEVICE ZOOM
 
@@ -393,18 +431,23 @@ class exports.DeviceComponent extends BaseClass
 	_calculatePhoneScale: ->
 
 		# Calculates a phone scale that fits the screen unless a fixed value is set
+		dimension = if @hideBezel then @screen else @phone
 
-		[width, height] = @_getOrientationDimensions(@phone.width, @phone.height)
+		[width, height] = @_getOrientationDimensions(dimension.width, dimension.height)
 
-		paddingOffset = @_device?.paddingOffset or 0
+		if @hideBezel
+			padding = 0
+		else
+			paddingOffset = @_device?.paddingOffset or 0
+			padding = (@padding + paddingOffset) * 2
 
 		phoneScale = _.min([
-			(window.innerWidth  - ((@padding + paddingOffset) * 2)) / width,
-			(window.innerHeight - ((@padding + paddingOffset) * 2)) / height
+			(window.innerWidth  - padding) / width,
+			(window.innerHeight - padding) / height
 		])
 
 		# Never scale the phone beyond 100%
-		phoneScale = 1 if phoneScale > 1
+		phoneScale = 1 if phoneScale > 1 and not @hideBezel
 
 		@emit("change:phoneScale", phoneScale)
 
@@ -554,7 +597,7 @@ class exports.DeviceComponent extends BaseClass
 	# HANDS
 
 	handSwitchingSupported: ->
-		return @_device.hands isnt undefined
+		return @_device.hands isnt undefined and not @hideBezel
 
 	nextHand: ->
 		return if @hands.rotationZ isnt 0

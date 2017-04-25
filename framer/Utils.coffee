@@ -312,7 +312,7 @@ Utils.callAfterCount = (total, callback) ->
 # ENVIROMENT FUNCTIONS
 
 Utils.isWebKit = ->
-	window.WebKitCSSMatrix isnt undefined
+	window.WebKitCSSMatrix isnt undefined and not Utils.isEdge()
 
 Utils.webkitVersion = ->
 	version = -1
@@ -326,6 +326,12 @@ Utils.isChrome = ->
 
 Utils.isSafari = ->
 	return /Safari/.test(navigator.userAgent) and /Apple Computer/.test(navigator.vendor)
+
+Utils.isFirefox = ->
+	return /^Mozilla.*Firefox\/\d+\.\d+$/.test(navigator.userAgent)
+
+Utils.isEdge = ->
+	return /Edge/.test(navigator.userAgent)
 
 Utils.isAndroid = ->
 	return /(android)/i.test(navigator.userAgent)
@@ -366,7 +372,7 @@ Utils.isRelativeUrl = (url) ->
 	not /^([a-zA-Z]{1,8}:\/\/).*$/.test(url)
 
 Utils.isLocalServerUrl = (url) ->
-	return url.indexOf("127.0.0.1") isnt -1 or url.indexOf("localhost")  isnt -1
+	return /[a-zA-Z]{1,8}:\/\/127\.0\.0\.1/.test(url) or /[a-zA-Z]{1,8}:\/\/localhost/.test(url)
 
 Utils.isLocalUrl = (url) ->
 	return true if Utils.isFileUrl(url)
@@ -403,7 +409,10 @@ Utils.devicePixelRatio = ->
 	window.devicePixelRatio
 
 Utils.isJP2Supported = ->
-	return Utils.isWebKit() and not Utils.isChrome()
+	if Utils.isFirefox()
+		return false
+	else
+		return Utils.isWebKit() and not Utils.isChrome()
 
 Utils.isWebPSupported = ->
 	return Utils.isChrome()
@@ -430,16 +439,38 @@ Utils.deviceFont = (os) ->
 	# https://github.com/jonathantneal/system-font-css
 
 	if not os
-		os = "macos" if Utils.isMacOS()
-		os = "ios" if Utils.isIOS()
-		os = "android" if Utils.isAndroid()
-		os = "windows" if Utils.isWindows()
+		os = "macOS" if Utils.isMacOS()
+		os = "iOS" if Utils.isIOS()
+		os = "Android" if Utils.isAndroid()
+		os = "Windows" if Utils.isWindows()
 
-	return "-apple-system, SF UI Text, Helvetica Neue" if os is "macos"
-	return "-apple-system, SF UI Text, Helvetica Neue" if os is "ios"
-	return "Roboto, Helvetica Neue" if os is "android"
-	return "Segoe UI" if os is "windows"
-	return "Helvetica"
+	appleFont = "-apple-system, BlinkMacSystemFont, SF UI Text, Helvetica Neue"
+	googleFont = "Roboto, Helvetica Neue"
+	microsoftFont = "Segoe UI, Helvetica Neue"
+	switch os
+		when "Android" then return googleFont
+		when "iOS", "watchOS", "macOS" then return appleFont
+		when "Windows" then return microsoftFont
+
+	return appleFont
+
+# Load fonts from Google Web Fonts
+_loadedFonts = []
+
+Utils.loadWebFont = (font, weight) ->
+	fontToLoad = font
+	fontToLoad += ":#{weight}" if weight?
+	fontObject = {fontFamily: font, fontWeight: weight}
+	if fontToLoad in _loadedFonts
+		return fontObject
+
+	link = document.createElement("link")
+
+	link.href = "https://fonts.googleapis.com/css?family=#{fontToLoad}"
+	link.rel = "stylesheet"
+	document.getElementsByTagName("head")[0].appendChild(link)
+	_loadedFonts.push(fontToLoad)
+	return fontObject
 
 ######################################################
 # MATH FUNCTIONS
@@ -642,7 +673,14 @@ Utils.loadImage = (url, callback, context) ->
 	element.src = url
 
 Utils.isInsideIframe = ->
-	return window isnt window.top
+	return window isnt window.top unless Utils.isInsideFramerCloud()
+	return false
+
+Utils.isInsideFramerCloud = ->
+	return Utils.getQueryParameters()["cloud"] is "1"
+
+Utils.getQueryParameters = ->
+	return _.fromPairs window.location.search.slice(1).split('&').map((val) -> val.split('='))
 
 ######################################################
 # GEOMETRY FUNCTIONS
@@ -968,7 +1006,7 @@ Utils.frameCenterPoint = (frame) ->
 		y: Utils.frameGetMidY(frame)
 
 Utils.frameInFrame = (frameA, frameB) ->
-	
+
 	for point in Utils.pointsFromFrame(frameA)
 		return false unless Utils.pointInFrame(point, frameB)
 
@@ -1011,7 +1049,7 @@ Utils.convertPointToContext = (point = {}, layer, rootContext=false, includeLaye
 	return point
 
 Utils.convertFrameToContext = (frame = {}, layer, rootContext=false, includeLayer=true) ->
-	frame = _.defaults(frame, {x: 0, y: 0, width: 100, height: 100})
+	frame = _.defaults(frame, {x: 0, y: 0, width: Framer.Defaults.Layer.width, height: Framer.Defaults.Layer.height})
 	corners = Utils.pointsFromFrame(frame)
 	convertedCorners = corners.map (point) ->
 		return Utils.convertPointToContext(point, layer, rootContext, includeLayer)
@@ -1042,7 +1080,7 @@ Utils.convertPointFromContext = (point = {}, layer, rootContext=false, includeLa
 
 # convert a frame from the context level to a layer, with rootContext enabled you can make it start from the top context
 Utils.convertFrameFromContext = (frame = {}, layer, rootContext=false, includeLayer=true) ->
-	frame = _.defaults(frame, {x: 0, y: 0, width: 100, height: 100})
+	frame = _.defaults(frame, {x: 0, y: 0, width: Framer.Defaults.Layer.width, height: Framer.Defaults.Layer.height})
 	corners = Utils.pointsFromFrame(frame)
 	convertedCorners = corners.map (point) ->
 		return Utils.convertPointFromContext(point, layer, rootContext, includeLayer)
@@ -1074,7 +1112,7 @@ Utils.boundingFrame = (layer, rootContext=true) ->
 Utils.perspectiveProjectionMatrix = (element) ->
 	p = element.perspective
 	m = new Matrix()
-	m.m34 = -1/p if p? and p isnt 0
+	m.m34 = -1 / p if p? and p isnt 0
 	return m
 
 # matrix of perspective projection with perspective origin applied
@@ -1140,9 +1178,12 @@ Utils.textSize = (text, style={}, constraints={}) ->
 	delete style.bottom
 	delete style.right
 
-	style.width = "#{constraints.width}px" if constraints.width
-	style.height = "#{constraints.height}px" if constraints.height
-
+	if constraints.max
+		style.maxWidth = "#{constraints.width}px" if constraints.width
+		style.maxHeight = "#{constraints.height}px" if constraints.height
+	else
+		style.width = "#{constraints.width}px" if constraints.width
+		style.height = "#{constraints.height}px" if constraints.height
 	_.extend(_textSizeNode.style, style)
 
 	if shouldCreateNode

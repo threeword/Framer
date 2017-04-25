@@ -24,8 +24,6 @@ class Knob extends Layer
 	constructor: (options) ->
 		super options
 
-	@define "constrained", @simpleProperty("constrained", false)
-
 
 class exports.SliderComponent extends Layer
 
@@ -45,8 +43,9 @@ class exports.SliderComponent extends Layer
 
 		@knob = new Knob
 			backgroundColor: "#fff"
-			shadowY: 1, shadowBlur: 3
-			shadowColor: "rgba(0, 0, 0, 0.35)"
+			shadowY: 2
+			shadowBlur: 4
+			shadowColor: "rgba(0, 0, 0, 0.3)"
 			name: "knob"
 
 		@fill = new Layer
@@ -129,7 +128,7 @@ class exports.SliderComponent extends Layer
 			width: @width + @knob.width
 			height: @height + @knob.height
 
-		if @knob.constrained
+		if @constrained
 			@knob.draggable.constraints =
 				x: 0
 				y: 0
@@ -160,6 +159,8 @@ class exports.SliderComponent extends Layer
 		radius = @borderRadius
 		@fill.style.borderRadius = "#{radius}px 0 0 #{radius}px"
 
+	@define "constrained", @simpleProperty("constrained", false)
+
 	@define "knobSize",
 		get: -> @_knobSize
 		set: (value) ->
@@ -184,15 +185,16 @@ class exports.SliderComponent extends Layer
 
 	@define "min",
 		get: -> @_min or 0
-		set: (value) -> @_min = value
+		set: (value) -> @_min = value if _.isFinite(value)
 
 	@define "max",
 		get: -> @_max or 1
-		set: (value) -> @_max = value
+		set: (value) -> @_max = value if _.isFinite(value)
 
 	@define "value",
 		get: -> return @_value
 		set: (value) ->
+			return unless _.isFinite(value)
 
 			@_value = Utils.clamp(value, @min, @max)
 
@@ -221,29 +223,30 @@ class exports.SliderComponent extends Layer
 
 	pointForValue: (value) ->
 		if @width > @height
-			if @knob.constrained
+			if @constrained
 				return Utils.modulate(value, [@min, @max], [0 + (@knob.width / 2), @width - (@knob.width / 2)], true)
 			else
 				return Utils.modulate(value, [@min, @max], [0 , @width], true)
 		else
-			if @knob.constrained
+			if @constrained
 				return Utils.modulate(value, [@min, @max], [0 + (@knob.height / 2), @height - (@knob.height / 2)], true)
 			else
 				return Utils.modulate(value, [@min, @max], [0, @height], true)
 
 	valueForPoint: (value) ->
 		if @width > @height
-			if @knob.constrained
+			if @constrained
 				return Utils.modulate(value, [0 + (@knob.width / 2), @width - (@knob.width / 2)], [@min, @max], true)
 			else
 				return Utils.modulate(value, [0, @width], [@min, @max], true)
 		else
-			if @knob.constrained
+			if @constrained
 				return Utils.modulate(value, [0 + (@knob.height / 2), @height - (@knob.height / 2)], [@min, @max], true)
 			else
 				return Utils.modulate(value, [0, @height], [@min, @max], true)
 
 	animateToValue: (value, animationOptions={curve: "spring(300, 25, 0)"}) ->
+		return unless _.isFinite(value)
 		if @width > @height
 			animationOptions.properties = {x: @pointForValue(value) - (@knob.width/2)}
 		else

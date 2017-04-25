@@ -10,6 +10,8 @@ Framer.resetDefaults = ->
 	Framer.Defaults.Layer.height = 100
 Framer.resetDefaults()
 
+Framer.Device = new Framer.DeviceView()
+
 window.console.debug = (v) ->
 window.console.warn = (v) ->
 
@@ -24,6 +26,7 @@ window.print = (args...) ->
 	console.log "\n»", args.map((obj) -> Utils.inspect(obj)).join(", ")
 
 require "./tests/AlignTest"
+require "./tests/CurvesTest"
 require "./tests/EventEmitterTest"
 require "./tests/UtilsTest"
 require "./tests/BaseClassTest"
@@ -38,11 +41,13 @@ require "./tests/LayerAnimationTest"
 require "./tests/LayerDraggableTest"
 require "./tests/ContextTest"
 require "./tests/ScrollComponentTest"
+require "./tests/TextLayerTest"
 require "./tests/PageComponentTest"
 require "./tests/VersionTest"
 require "./tests/ColorTest"
 require "./tests/DeviceComponentTest"
 require "./tests/SliderComponentTest"
+require "./tests/RangeSliderComponentTest"
 require "./tests/FlowComponentTest"
 
 mocha.run()

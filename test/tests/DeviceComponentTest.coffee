@@ -1,3 +1,5 @@
+assert = require "assert"
+
 describe "DeviceComponent", ->
 
 	it "should default to iphone 7 silver", ->
@@ -149,3 +151,49 @@ describe "DeviceComponent", ->
 		device.orientation.should.equal -90
 		device.isPortrait.should.equal false
 		device.screenSize.should.eql {width: 1920, height: 1080}
+
+	it "should return the correct platform per device", ->
+		device = new Framer.DeviceComponent()
+		for key, value of Framer.DeviceComponent.Devices
+			device.deviceType = key
+			switch device.platform()
+				when "iOS"
+					assert(_.startsWith(key, "iphone") or _.startsWith(key, "ipad") or _.startsWith(key, "apple-iphone") or _.startsWith(key, "apple-ipad"), "#{key} should not have platform iOS")
+				when "watchOS"
+					assert(_.startsWith(key, "apple-watch") or _.startsWith(key, "applewatch"), "#{key} should not have platform watchOS")
+				when "Windows"
+					assert(_.startsWith(key, "dell") or _.startsWith(key, "microsoft"), "#{key} should not have platform Windows")
+				when "Android"
+					assert(_.startsWith(key, "google") or _.startsWith(key, "nexus") or _.startsWith(key, "htc") or _.startsWith(key, "samsung"), "#{key} should not have platform Android")
+				when "macOS"
+					assert(_.startsWith(key, "apple-macbook") or _.startsWith(key, "apple-imac") or _.startsWith(key, "desktop-safari"), "#{key} should not have platform macOS")
+				else
+					# Exceptions
+					assert(key in ["fullscreen", "custom", "sony-w85Oc", "test"], "#{key} should have a platform specified")
+
+	describe "when not showing bezel", ->
+		it "the background color should follow the screen color", ->
+			Canvas.backgroundColor = "red"
+			Framer.Device.screen.backgroundColor = "green"
+			Framer.Device.hideBezel = true
+			Canvas.backgroundColor.toName().should.eql "green"
+			Framer.Device.screen.backgroundColor = "blue"
+			Canvas.backgroundColor.toName().should.equal "blue"
+
+		it "should keep track of background changes", ->
+			Canvas.backgroundColor = "red"
+			Framer.Device.screen.backgroundColor = "green"
+			Framer.Device.hideBezel = true
+			Canvas.backgroundColor = "blue"
+			Canvas.backgroundColor.toName().should.equal "green"
+			Framer.Device.hideBezel = false
+			Canvas.backgroundColor.toName().should.equal "blue"
+
+	describe "when showing bezel", ->
+		it "should revert to the background color before disabling the bezel", ->
+			Canvas.backgroundColor = "red"
+			Framer.Device.screen.backgroundColor = "green"
+			Framer.Device.hideBezel = true
+			Canvas.backgroundColor.toName().should.eql "green"
+			Framer.Device.hideBezel = false
+			Canvas.backgroundColor.toName().should.equal "red"

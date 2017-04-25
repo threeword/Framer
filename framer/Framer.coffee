@@ -11,6 +11,7 @@ Framer._Layer = Framer.Layer # So it won't be overridden by MobileScrollFix
 Framer.BackgroundLayer = (require "./BackgroundLayer").BackgroundLayer
 Framer.VideoLayer = (require "./VideoLayer").VideoLayer
 Framer.SVGLayer = (require "./SVGLayer").SVGLayer
+Framer.TextLayer = (require "./TextLayer").TextLayer
 Framer.Events = (require "./Events").Events
 Framer.Gestures = (require "./Gestures").Gestures
 Framer.Animation = (require "./Animation").Animation
@@ -24,6 +25,7 @@ Framer.print = (require "./Print").print
 Framer.ScrollComponent = (require "./Components/ScrollComponent").ScrollComponent
 Framer.PageComponent = (require "./Components/PageComponent").PageComponent
 Framer.SliderComponent = (require "./Components/SliderComponent").SliderComponent
+Framer.RangeSliderComponent = (require "./Components/RangeSliderComponent").RangeSliderComponent
 Framer.DeviceComponent = (require "./Components/DeviceComponent").DeviceComponent
 Framer.GridComponent = (require "./Components/GridComponent").GridComponent
 Framer.FlowComponent = (require "./Components/FlowComponent").FlowComponent
@@ -46,6 +48,10 @@ Framer.SpringDHOAnimator = (require "./Animators/SpringDHOAnimator").SpringDHOAn
 Framer.SpringRK4Animator = (require "./Animators/SpringRK4Animator").SpringRK4Animator
 Framer.LayerDraggable = (require "./LayerDraggable").LayerDraggable
 
+Framer.Curves = require "./Animators/Curves"
+window.Bezier = Framer.Curves.Bezier
+window.Spring = Framer.Curves.Spring
+
 Framer.Importer = (require "./Importer").Importer
 Framer.Extras = require "./Extras/Extras"
 
@@ -67,7 +73,6 @@ Framer.resetDefaults = Defaults.reset
 # the preloader can pick it up if it needs to.
 Framer.DefaultContext = new Framer.Context(name: "Default")
 Framer.DefaultContext.backgroundColor = "white"
-Framer.DefaultContext.visible = false
 Framer.CurrentContext = Framer.DefaultContext
 
 window.Canvas = new (require "./Canvas").Canvas
@@ -77,11 +82,5 @@ Framer.Extras.TouchEmulator.enable() if not Utils.isTouch()
 Framer.Extras.ErrorDisplay.enable() if not Utils.isFramerStudio()
 Framer.Extras.Preloader.enable() if not Utils.isFramerStudio()
 Framer.Extras.Hints.enable() if not Utils.isFramerStudio()
-
-# If there is no preloader around, we show the default context
-# This _won't_ avoid a flickr of the device if you use the preloader
-# from your code directly, unfortunately. But at this point, that is an
-# action in the future, so we can't know wether that will happen or not.
-Framer.DefaultContext.visible = true unless Framer.Preloader
 
 Utils.domComplete(Framer.Loop.start)

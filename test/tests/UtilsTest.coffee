@@ -233,6 +233,21 @@ describe "Utils", ->
 			# it "should return the right size with height constraint", ->
 			# 	Utils.textSize(text, style, {height: 100}).should.eql(width: 168, height: 100)
 
+	describe "loadWebFont", ->
+		it "loads fonts at different weights" , ->
+			raleway = Utils.loadWebFont("Raleway")
+			raleway200 = Utils.loadWebFont("Raleway", 200)
+			raleway800 = Utils.loadWebFont("Raleway", 800)
+			raleway.should.eql {fontFamily: "Raleway", fontWeight: undefined}
+			raleway200.should.eql {fontFamily: "Raleway", fontWeight: 200}
+			raleway800.should.eql {fontFamily: "Raleway", fontWeight: 800}
+
+		it "returns the same when reloading the same fonts", ->
+			raleway200 = Utils.loadWebFont("Raleway", 800)
+			raleway200.should.eql {fontFamily: "Raleway", fontWeight: 800}
+			raleway200 = Utils.loadWebFont("Raleway", 800)
+			raleway200.should.eql {fontFamily: "Raleway", fontWeight: 800}
+
 
 	describe "frameSortByAbsoluteDistance", ->
 
@@ -430,6 +445,7 @@ describe "Utils", ->
 			Utils.isLocalServerUrl("https://127.0.0.1/index.html").should.equal(true)
 			Utils.isLocalServerUrl(".././Desktop/index.html").should.equal(false)
 			Utils.isLocalServerUrl("https://apple.com/index.html").should.equal(false)
+			Utils.isLocalServerUrl("https://apple.com/?url=http%3A%2F%2F127.0.0.1").should.equal(false)
 
 	describe "isLocalAssetUrl", ->
 		it "should work", ->

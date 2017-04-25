@@ -15,7 +15,6 @@ Originals =
 	Animation:
 		# curve: "spring(400, 40, 0)" # Or, the Cemre-Curve
 		curve: "ease"
-		curveOptions: {}
 		time: 1
 		repeat: 0
 		delay: 0
@@ -61,11 +60,15 @@ Originals =
 		velocityScale: 890
 	FrictionSimulator:
 		friction: 2
-		tolerance: 1/10
+		tolerance: 1 / 10
+	Spring:
+		dampingRatio: 0.5
+		mass: 1
+		velocity: 0
 	SpringSimulator:
 		tension: 500
 		friction: 10
-		tolerance: 1/10000
+		tolerance: 1 / 10000
 	MomentumBounceSimulator:
 		momentum:
 			friction: 2
@@ -100,7 +103,11 @@ exports.Defaults =
 		defaults = _.cloneDeep Originals[className]
 		# Copy over the user defined options
 		for k, v of Framer.Defaults[className]
-			defaults[k] = if _.isFunction(v) then v() else v
+			# Make an exception for curve functions
+			if _.isFunction(v) and not (className is "Animation" and k is "curve")
+				defaults[k] = v()
+			else
+				defaults[k] = v
 
 		# Then copy over the default keys to the options
 		for k, v of defaults
