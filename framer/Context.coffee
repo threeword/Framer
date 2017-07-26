@@ -41,6 +41,27 @@ class exports.Context extends BaseClass
 
 	@define "element", get: -> @_element
 
+	@define "devicePixelRatio",
+		get: -> @_devicePixelRatio ? 1
+		set: (value) ->
+			return if value is @_devicePixelRatio
+			@_devicePixelRatio = value
+			for l in @_layers
+				l.updateForDevicePixelRatioChange()
+
+	@define "renderUsingNativePixelRatio", @simpleProperty("renderUsingNativePixelRatio", false)
+	@define "autoLayout", @simpleProperty("autoLayout", true)
+
+	@define "pixelMultiplier",
+		get: ->
+			if @renderUsingNativePixelRatio
+				return 1
+			else
+				return @devicePixelRatio
+
+	@define "scale",
+		get: -> @pixelMultiplier
+
 	constructor: (options={}) ->
 
 		options = Defaults.getDefaults("Context", options)
@@ -128,6 +149,15 @@ class exports.Context extends BaseClass
 		layer = @_layerForElement(element)
 		return layer if layer
 		return @layerForElement(element.parentNode)
+
+	selectLayer: (selector) ->
+		Utils.findLayer(@_layers, selector)
+
+	selectAllLayers: (selector) ->
+		Utils.filterLayers(@_layers, selector)
+
+	layout: =>
+		@rootLayers.map (l) -> l.layout()
 
 	# Animations
 	@define "animations", get: -> _.clone(@_animations)
@@ -263,7 +293,9 @@ class exports.Context extends BaseClass
 		@_element = document.createElement("div")
 		@_element.id = "FramerContextRoot-#{@_name}"
 		@_element.classList.add("framerContext")
-		@_element.style["webkitPerspective"] = @perspective
+		webkitPerspective = Utils.webkitPerspectiveForValue(@perspective)
+		if webkitPerspective?
+			@_element.style["webkitPerspective"] = webkitPerspective
 		@_element.style["backgroundColor"] = @backgroundColor
 
 		@__pendingElementAppend = =>
@@ -304,7 +336,18 @@ class exports.Context extends BaseClass
 			return @parent.height if @parent?
 			return window.innerHeight
 
+	@define "innerWidth",
+		get: ->
+			return @parent.width / @devicePixelRatio if @parent?
+			return window.innerWidth
+
+	@define "innerHeight",
+		get: ->
+			return @parent.height / @devicePixelRatio if @parent?
+			return window.innerHeight
+
 	@define "frame", get: -> {x: 0, y: 0, width: @width, height: @height}
+	@define "innerFrame", get: -> {x: 0, y: 0, width: @innerWidth, height: @innerHeight}
 	@define "size",  get: -> _.pick(@frame, ["width", "height"])
 	@define "point", get: -> _.pick(@frame, ["x", "y"])
 	@define "canvasFrame",
@@ -325,9 +368,10 @@ class exports.Context extends BaseClass
 		get: ->
 			return @_perspective
 		set: (value) ->
-			if _.isNumber(value)
+			webkitPerspective = Utils.webkitPerspectiveForValue(value)
+			if webkitPerspective?
 				@_perspective = value
-				@_element?.style["webkitPerspective"] = @_perspective
+				@_element?.style["webkitPerspective"] = webkitPerspective
 
 	_updatePerspective: ->
 		@_element?.style["webkitPerspectiveOrigin"] = "#{@perspectiveOriginX * 100}% #{@perspectiveOriginY * 100}%"
@@ -356,8 +400,13 @@ class exports.Context extends BaseClass
 			return unless @_element
 			@_element.style["z-index"] = value
 
-	ancestors: (args...) ->
-		return @_parent?.ancestors(args...) or []
+	containers: (ignoredArgument=true, result=[]) ->
+		if @_parent?
+			result.push(@_parent)
+			return @_parent?.containers(true, result)
+		else
+			return result
+
 
 	toInspect: ->
 

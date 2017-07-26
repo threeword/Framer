@@ -4,7 +4,7 @@
 {BaseClass} = require "./BaseClass"
 {Defaults} = require "./Defaults"
 {LayerStateMachine} = require "./LayerStateMachine"
-
+{StyledText} = require "./StyledText"
 LayerStatesIgnoredKeys = ["ignoreEvents", "name", "id"]
 
 reservedStateError = (name) ->
@@ -62,6 +62,13 @@ class LayerStates
 				stateProperties[k] = new Color(v)
 				continue
 
+			if Gradient.isGradient(v)
+				stateProperties[k] = v
+				continue
+
+			if StyledText.isStyledText(v)
+				stateProperties[k] = v
+
 			if @_isValidProperty(k, v)
 				stateProperties[k] = v
 
@@ -73,6 +80,7 @@ class LayerStates
 		return true if _.isBoolean(v)
 		return true if _.isString(v)
 		return true if Color.isColorObject(v)
+		return true if Gradient.isGradient(v)
 		return true if v is null
 		return true if v?.constructor?.name is "Layer"
 		return false

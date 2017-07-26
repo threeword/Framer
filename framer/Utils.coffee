@@ -1,7 +1,7 @@
 {_} = require "./Underscore"
 {Screen} = require "./Screen"
 {Matrix} = require "./Matrix"
-
+WebFont = require('webfontloader')
 Utils = {}
 
 Utils.reset = ->
@@ -26,7 +26,11 @@ Utils.setValueForKeyPath = (obj, path, val) ->
 	while i < n and result isnt undefined
 		field = fields[i]
 		if i is n - 1
-			result[field] = val
+			currentValue = result[field]
+			if _.isObject(currentValue) and _.isObject(val) and Object.getPrototypeOf(currentValue) is Object.prototype and Object.getPrototypeOf(val) is Object.prototype
+				_.extend(currentValue, val)
+			else
+				result[field] = val
 		else
 			if typeof result[field] is "undefined" or not _.isObject(result[field])
 				result[field] = {}
@@ -46,6 +50,14 @@ Utils.arrayNext = (arr, item) ->
 
 Utils.arrayPrev = (arr, item) ->
 	arr[arr.indexOf(item) - 1] or _.last arr
+
+Utils.webkitPerspectiveForValue =  (value) ->
+	if value in ["none", null, 0]
+		return "none"
+	else if _.isNumber(value)
+		return value
+	else
+		return null
 
 
 ######################################################
@@ -148,12 +160,12 @@ Utils.randomNumber = (a=0, b=1) ->
 	# Return a random number between a and b
 	Utils.mapRange Math.random(), 0, 1, a, b
 
-Utils.randomImage = (layer, offset=50) ->
+Utils.randomImage = (layer) ->
 
 	if _.isNumber(layer)
 		layer = {id: layer}
 
-	photos = ["1417733403748-83bbc7c05140", "1423841265803-dfac59ebf718", "1433689056001-018e493576bc", "1430812411929-de4cf1d1fe73", "1457269449834-928af64c684d", "1443616839562-036bb2afd9a2", "1461535676131-2de1f7054d3f", "1462393582935-1ac76b85dcf1", "1414589530802-cb54ce0575d9", "1422908132590-117a051fc5cd", "1438522014717-d7ce32b9bab9", "1451650804883-52fb86cc5b18", "1462058164249-2dcdcda67ce7", "1456757014009-0614a080ff7f", "1434238255348-4fb0d9caa0a4", "1448071792026-7064a01897e7", "1458681842652-019f4eeda5e5", "1460919920543-d8c45f4bd621", "1447767961238-038617b84a2b", "1449089299624-89ce41e8306c", "1414777410116-81e404502b52", "1433994349623-0a18966ee9c0", "1452567772283-91d67178f409", "1458245229726-a8ba04cb5969", "1422246719650-cb30d19825e3", "1417392639864-2c88dd07f460", "1442328166075-47fe7153c128", "1448467258552-6b3982373a13", "1447023362548-250f3a7b80ed", "1451486242265-24b0c0ef9a51", "1414339372428-797ec111646d"]
+	photos = ["1417733403748-83bbc7c05140", "1423841265803-dfac59ebf718", "1433689056001-018e493576bc", "1430812411929-de4cf1d1fe73", "1457269449834-928af64c684d", "1443616839562-036bb2afd9a2", "1461535676131-2de1f7054d3f", "1462393582935-1ac76b85dcf1", "1414589530802-cb54ce0575d9", "1422908132590-117a051fc5cd", "1438522014717-d7ce32b9bab9", "1462058164249-2dcdcda67ce7", "1456757014009-0614a080ff7f", "1434238255348-4fb0d9caa0a4", "1448071792026-7064a01897e7", "1458681842652-019f4eeda5e5", "1460919920543-d8c45f4bd621", "1447767961238-038617b84a2b", "1449089299624-89ce41e8306c", "1414777410116-81e404502b52", "1433994349623-0a18966ee9c0", "1452567772283-91d67178f409", "1458245229726-a8ba04cb5969", "1422246719650-cb30d19825e3", "1417392639864-2c88dd07f460", "1442328166075-47fe7153c128", "1448467258552-6b3982373a13", "1447023362548-250f3a7b80ed", "1451486242265-24b0c0ef9a51", "1414339372428-797ec111646d"]
 	photo = Utils.randomChoice(photos)
 	photo = photos[(layer.id) % photos.length] if layer?.id
 
@@ -280,6 +292,32 @@ Utils.uuid = ->
 		output[digit] = chars[if digit is 19 then (r & 0x3) | 0x8 else r]
 
 	output.join ""
+
+Utils.findLayer = (layers, selector) ->
+	_.find layers, (layer) -> Utils.layerMatchesSelector(layer, selector)
+
+Utils.filterLayers = (layers, selector) ->
+	_.filter layers, (layer) -> Utils.layerMatchesSelector(layer, selector)
+
+Utils.layerMatchesSelector = (layer, selector) ->
+	getHierarchyString = (l) ->
+		# create a string of the hierarchy so we can run regex on it
+		nameArr = _.pluck(l.ancestors().reverse(), 'name')
+		return nameArr.join('>') + ">#{layer.name}"
+
+	hierarchyMatch = (hierarchy, string) ->
+		string = string.replace(/\s*>\s*/g, '>') # clean spaces around >
+		string = string.split('*').join('[^>]*') # anything but >
+		string = string.split(' ').join('(?:.*)>') # anything but ends with >
+		string = string.split(',').join('$|') # or
+		regexString = "(^|>)"+string+"$"
+
+		regExp = new RegExp(regexString)
+		return regExp.test(hierarchy)
+
+	if selector
+		hierarchy = getHierarchyString(layer, selector)
+		return hierarchyMatch(hierarchy, selector)
 
 Utils.arrayFromArguments = (args) ->
 	# Convert an arguments object to an array
@@ -455,22 +493,106 @@ Utils.deviceFont = (os) ->
 	return appleFont
 
 # Load fonts from Google Web Fonts
-_loadedFonts = []
+_isFontLoadedResults = {}
 
-Utils.loadWebFont = (font, weight) ->
-	fontToLoad = font
-	fontToLoad += ":#{weight}" if weight?
-	fontObject = {fontFamily: font, fontWeight: weight}
-	if fontToLoad in _loadedFonts
-		return fontObject
+Utils.isFontFamilyLoaded = (fonts, timeout = 1000) ->
+	if not _.isArray(fonts)
+		fonts = [fonts]
+	return Utils.loadWebFontConfig
+		custom:
+			families: fonts
+		timeout: timeout
 
-	link = document.createElement("link")
+fontsFromConfig = (config) ->
+	result = []
+	if _.isArray(config?.custom?.families)
+		result = result.concat(config?.custom?.families)
+	if _.isArray(config?.google?.families)
+		result = result.concat(config?.google?.families)
+	return result
 
-	link.href = "https://fonts.googleapis.com/css?family=#{fontToLoad}"
-	link.rel = "stylesheet"
-	document.getElementsByTagName("head")[0].appendChild(link)
-	_loadedFonts.push(fontToLoad)
-	return fontObject
+Utils.loadWebFontConfig = (config) ->
+	fonts = fontsFromConfig(config)
+	allLoadedResult = null
+	for currentFont in fonts
+		currentFontLoaded = _isFontLoadedResults[currentFont]
+		if not currentFontLoaded?
+			allLoadedResult = null
+			break
+		allLoadedResult ?= currentFontLoaded
+		allLoadedResult = allLoadedResult and currentFontLoaded
+	if allLoadedResult?
+		return allLoadedResult
+
+	promise =
+		resolved: false
+		error: null
+		resolve: null
+		reject: null
+		'then': (cb) ->
+			@resolve = cb
+			@resolve?() if @resolved
+			return @
+		'catch': (cb) ->
+			@reject = cb
+			@reject?(@error) if @error?
+			return @
+
+	customActive = config.active
+	customInactive = config.inactive
+	customFontactive = config.fontactive
+	customFontinactive = config.fontinactive
+
+	resolvePromise = ->
+		promise.resolve?()
+		promise.resolved = true
+
+	rejectPromise = (error) ->
+		promise.reject?(error)
+		promise.error = error
+
+	config.fontactive = (font) ->
+		_isFontLoadedResults[font] = true
+		customFontactive?(font)
+		if fonts.length is 1
+			f = resolvePromise
+			resolvePromise = null
+			f()
+
+	config.fontinactive = (font) ->
+		console.warn("Tried to load unavailable font: '#{font}'")
+		_isFontLoadedResults[font] = false
+		customFontinactive?(font)
+		if fonts.length is 1
+			f = rejectPromise
+			rejectPromise = null
+			error = new Error("#{font} failed to load")
+			f(error)
+
+	config.active = ->
+		customActive?()
+		resolvePromise?()
+
+	config.inactive = ->
+		customInactive?()
+		error = new Error("#{fonts.join(', ')} failed to load")
+		rejectPromise?(error)
+
+	WebFont.load config
+
+	return promise
+
+Utils.loadWebFont = (font, weight, source = "google") ->
+	if not _isFontLoadedResults[font]? or _isFontLoadedResults[font] is false
+		delete _isFontLoadedResults[font]
+		config = {}
+		if source is "google"
+			fontToLoad = font
+			fontToLoad += ":#{weight}" if weight?
+			config.google =
+				families: [fontToLoad]
+		Utils.loadWebFontConfig config
+	return {fontFamily: font, fontWeight: weight}
 
 ######################################################
 # MATH FUNCTIONS
@@ -766,6 +888,20 @@ Utils.pointAngle = (pointA, pointB) ->
 	return Math.atan2(pointB.y - pointA.y, pointB.x - pointA.x) * 180 / Math.PI
 
 
+Utils.divideFrame = (frame, scale) ->
+	frame.x /= scale
+	frame.y /= scale
+	frame.width /= scale
+	frame.height /= scale
+	return frame
+
+Utils.scaleFrames = (layer, scale) ->
+	if layer instanceof Layer
+		layer.constraintValues = null
+		layer.children.map (l) -> Utils.scaleFrames l, scale
+		layer.frame = Utils.divideFrame layer.frame, scale
+	if _.isArray(layer)
+		layer.map (l) -> Utils.scaleFrames l, scale
 # Size
 
 Utils.size = (input) ->
@@ -898,11 +1034,71 @@ Utils.frameFromPoints = (points) ->
 		height: maxY - minY
 
 Utils.pixelAlignedFrame = (frame) ->
-	result =
-		width: Math.round(frame.width + (frame.x % 1))
-		height: Math.round(frame.height + (frame.y % 1))
-		x: Math.round(frame.x)
-		y: Math.round(frame.y)
+	x = Math.round(frame.x)
+	y = Math.round(frame.y)
+	maxX = Math.round(frame.x + frame.width)
+	maxY = Math.round(frame.y + frame.height)
+	width = Math.max(maxX - x, 0)
+	height = Math.max(maxY - y, 0)
+	return {x, y, width, height}
+
+Utils.calculateLayoutFrame = (parentFrame, child) ->
+	constraintValues = child.constraintValues
+
+	x = constraintValues.left or 0
+	y = constraintValues.top or 0
+	width = constraintValues.width
+	height = constraintValues.height
+
+	if (parentFrame is null)
+		return Utils.pixelAlignedFrame({x, y, width, height})
+
+	ratio = width / height
+
+	if (constraintValues.widthFactor isnt null)
+		width = parentFrame.width * constraintValues.widthFactor
+		if (constraintValues.aspectRatioLocked)
+			height = width / ratio
+
+	if (constraintValues.heightFactor isnt null)
+		height = parentFrame.height * constraintValues.heightFactor
+		if (constraintValues.aspectRatioLocked)
+			width = height * ratio
+
+	if (constraintValues.left isnt null and constraintValues.right isnt null)
+		width = parentFrame.width - constraintValues.right - constraintValues.left
+		if (constraintValues.aspectRatioLocked)
+			height = width / ratio
+
+	if (constraintValues.top isnt null and constraintValues.bottom isnt null)
+		height = parentFrame.height - constraintValues.bottom - constraintValues.top
+		if (constraintValues.aspectRatioLocked)
+			width = height * ratio
+
+	x = Utils.calculateLayoutX(parentFrame, constraintValues, width)
+	y = Utils.calculateLayoutY(parentFrame, constraintValues, height)
+
+	return Utils.pixelAlignedFrame({x, y, width, height})
+
+Utils.calculateLayoutX = (parentFrame, constraintValues, width) ->
+	x = constraintValues.left or 0
+	if (constraintValues.left isnt null)
+		x = constraintValues.left
+	else if (constraintValues.right isnt null)
+		x = parentFrame.width - constraintValues.right - width
+	else
+		x = (constraintValues.centerAnchorX * parentFrame.width) - (width / 2)
+	return x
+
+Utils.calculateLayoutY = (parentFrame, constraintValues, height) ->
+	y = constraintValues.top or 0
+	if (constraintValues.top isnt null)
+		y = constraintValues.top
+	else if (constraintValues.bottom isnt null)
+		y = parentFrame.height - constraintValues.bottom - height
+	else
+		y = (constraintValues.centerAnchorY * parentFrame.height) - (height / 2)
+	return y
 
 Utils.frameMerge = ->
 
@@ -1032,19 +1228,23 @@ Utils.rotationNormalizer = ->
 		lastValue = value
 		return value
 
-
 # Coordinate system
 
 # convert a point from a layer to the context level, with rootContext enabled you can make it cross to the top context
 Utils.convertPointToContext = (point = {}, layer, rootContext=false, includeLayer=true) ->
 	point = _.defaults(point, {x: 0, y: 0, z: 0})
-	ancestors = layer.ancestors(rootContext)
-	ancestors.unshift(layer) if includeLayer
+	containers = layer.containers(rootContext)
+	containers.unshift(layer) if includeLayer
 
-	for ancestor in ancestors
-		point.z = 0 if ancestor.flat or ancestor.clip
-		point = ancestor.matrix3d.point(point)
-		point.z = 0 unless ancestor.parent
+	for container in containers
+		point.z = 0 if container.flat or container.clip
+		if container.matrix3d?
+			point = container.matrix3d.point(point)
+		else if container.scale?
+			point =
+				x: point.x * container.scale
+				y: point.y * container.scale
+		point.z = 0 unless container.parent
 
 	return point
 
@@ -1066,16 +1266,25 @@ Utils.convertPointFromContext = (point = {}, layer, rootContext=false, includeLa
 		else
 			parent = layer.parent or layer.context
 			node = parent._element
-		return Utils.point(webkitConvertPointFromPageToNode(node, new WebKitPoint(point.x, point.y)))
+		point = Utils.point(webkitConvertPointFromPageToNode(node, new WebKitPoint(point.x, point.y)))
+		context = layer.context ? layer
+		point =
+			x: point.x / context.scale
+			y: point.y / context.scale
+		return point
 
-	ancestors = layer.ancestors(rootContext)
-	ancestors.reverse()
-	ancestors.push(layer) if includeLayer
 
-	for ancestor in ancestors
-		continue unless ancestor.matrix3d
-		point = ancestor.matrix3d.inverse().point(point)
+	containers = layer.containers(rootContext)
+	containers.reverse()
+	containers.push(layer) if includeLayer
 
+	for container in containers
+		if container.matrix3d?
+			point = container.matrix3d.inverse().point(point)
+		else if container.scale?
+			point =
+				x: point.x / container.scale
+				y: point.y / container.scale
 	return point
 
 # convert a frame from the context level to a layer, with rootContext enabled you can make it start from the top context

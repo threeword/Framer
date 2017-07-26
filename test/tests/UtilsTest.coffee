@@ -1,3 +1,4 @@
+assert = require "assert"
 
 describe "Utils", ->
 
@@ -192,6 +193,43 @@ describe "Utils", ->
 	# 		test = -> Utils.domLoadDataSync("static/nonexisting.txt")
 	# 		test.should.throw()
 
+	describe "layerMatchesSelector", ->
+		it "should match exact", ->
+			layerA = new Layer name: "layerA"
+			Utils.layerMatchesSelector(layerA, 'layerA').should.equal true
+
+		it "should match anything below", ->
+			layerA = new Layer name: "layerA"
+			layerB = new Layer name: "layerB", parent: layerA
+			layerC = new Layer name: "layerC", parent: layerB
+			Utils.layerMatchesSelector(layerB, 'layerA > *').should.equal true
+
+		it "should match descendant with wildcard", ->
+			layerA = new Layer name: "layerA"
+			layerB = new Layer name: "layerB", parent: layerA
+			layerC = new Layer name: "layerC", parent: layerB
+			Utils.layerMatchesSelector(layerC, 'layerA layer*').should.equal true
+
+		it "should match containing", ->
+			layerA = new Layer name: "layerA1"
+			layerB = new Layer name: "layerB1", parent: layerA
+			layerC = new Layer name: "layerC1", parent: layerB
+			Utils.layerMatchesSelector(layerB, '*rB*').should.equal true
+
+		it "should match multiple direct children", ->
+			layerA = new Layer name: "layerA"
+			layerB = new Layer name: "layerB", parent: layerA
+			layerC = new Layer name: "layerC", parent: layerB
+			Utils.layerMatchesSelector(layerC, 'layerA>layerB>layerC').should.equal true
+
+		it "should match multiple direct children", ->
+			layerA = new Layer name: "layerA"
+			layerB = new Layer name: "layerB", parent: layerA
+			layerC = new Layer name: "layerC", parent: layerB
+			Utils.layerMatchesSelector(layerA, 'layerB,layerC').should.equal false
+			Utils.layerMatchesSelector(layerB, 'layerB,layerC').should.equal true
+			Utils.layerMatchesSelector(layerC, 'layerB,layerC').should.equal true
+
 	describe "modulate", ->
 
 		it "should have the right results", ->
@@ -233,6 +271,135 @@ describe "Utils", ->
 			# it "should return the right size with height constraint", ->
 			# 	Utils.textSize(text, style, {height: 100}).should.eql(width: 168, height: 100)
 
+	describe "loadWebFontConfig", ->
+		describe "Real font loading tests", ->
+			before ->
+				# We skip the this test on CI, because I can't get the WebFont loading to work... :'(
+				if mocha.env.CI
+					@skip()
+			it "should resolve the promise if the font is loaded", (done) ->
+				promise = Utils.loadWebFontConfig
+					custom:
+						families: ["Courier"]
+				promise.then ->
+					done()
+				return
+
+			it "should return true if the font is already correctly loaded", (done) ->
+				promise = Utils.loadWebFontConfig
+					custom:
+						families: ["Arial"]
+				promise.then ->
+					result = Utils.loadWebFontConfig
+						custom:
+							families: ["Arial"]
+					result.should.equal true
+					done()
+				return
+
+			it "should not interfere with each other", (done) ->
+				Utils.loadWebFont("Raleway")
+				roboto = Utils.loadWebFontConfig
+					google:
+						families: ['Roboto']
+				roboto.then ->
+					done()
+				return
+
+			it "should cache loading of google fonts", (done) ->
+				@skip()
+				droid = Utils.loadWebFontConfig
+					google:
+						families: ['Droid Sans']
+				droid.then ->
+					r = Utils.loadWebFontConfig
+						google:
+							families: ['Droid Sans']
+					r.should.equal true
+					done()
+				return
+
+			it "should support loading multiple fonts at the same time", (done) ->
+				promise = Utils.loadWebFontConfig
+					google:
+						families: ['Droid Sans']
+					custom:
+						families: ['Helvetica']
+				promise.then ->
+					done()
+				return
+
+
+		it "should return a promise", (done) ->
+			promise = Utils.loadWebFontConfig
+				custom:
+					families: ["Test"]
+				timeout: 100
+			promise.catch ->
+				done()
+			return
+
+		it "should reject the promise if the font can't be loaded", (done) ->
+			promise = Utils.loadWebFontConfig
+				custom:
+					families: ["Test2"]
+				timeout: 100
+			promise.catch (error) ->
+				error.message.should.equal "Test2 failed to load"
+				done()
+			return
+
+		it "should return false if the font has already failed loading", (done) ->
+			promise = Utils.loadWebFontConfig
+				custom:
+					families: ["Test3"]
+				timeout: 100
+			promise.catch ->
+				result = Utils.loadWebFontConfig
+					custom:
+						families: ["Test3"]
+				result.should.equal false
+				done()
+			return
+
+		it "should support loading webfonts with WebFontConfig syntax", (done) ->
+			result = Utils.loadWebFontConfig
+				custom:
+					families: ['Random font']
+				timeout: 100
+			result.catch (e) ->
+				e.message.should.equal "Random font failed to load"
+				done()
+			return
+
+	describe "isFontFamilyLoaded", ->
+		it "should not reset the result if it is loaded successfully", (done) ->
+			if mocha.env.CI
+				@skip()
+				return
+			p = Utils.loadWebFontConfig
+				custom:
+					families: ["Georgia"]
+				timeout: 100
+			p.then ->
+				Utils.loadWebFont("Georgia")
+				promise = Utils.isFontFamilyLoaded("Georgia", 100)
+				promise.should.be.true
+				done()
+			return
+
+		it "should reset the result if a new load request is made", (done) ->
+			p = Utils.loadWebFontConfig
+				custom:
+					families: ["Test4"]
+				timeout: 100
+			p.catch ->
+				Utils.loadWebFont("Test4")
+				promise = Utils.isFontFamilyLoaded("Test4", 100)
+				promise.should.have.property('then')
+				done()
+			return
+
 	describe "loadWebFont", ->
 		it "loads fonts at different weights" , ->
 			raleway = Utils.loadWebFont("Raleway")
@@ -247,7 +414,6 @@ describe "Utils", ->
 			raleway200.should.eql {fontFamily: "Raleway", fontWeight: 800}
 			raleway200 = Utils.loadWebFont("Raleway", 800)
 			raleway200.should.eql {fontFamily: "Raleway", fontWeight: 800}
-
 
 	describe "frameSortByAbsoluteDistance", ->
 
@@ -413,6 +579,12 @@ describe "Utils", ->
 			Utils.setValueForKeyPath(obj, "fooA.fooB.fooC", "bar")
 			obj.should.eql({fooA: {fooB: {fooC: "bar"}}})
 
+		it "should merge object values", ->
+			obj = {}
+			Utils.setValueForKeyPath obj, "options.time", disabled: true
+			Utils.setValueForKeyPath obj, "options", disabled: true
+			obj.should.eql({options: {disabled: true, time: {disabled: true}}})
+
 	describe "isFileUrl", ->
 		it "should work", ->
 			Utils.isFileUrl("file:///Users/koen/Desktop/index.html").should.equal(true)
@@ -457,3 +629,99 @@ describe "Utils", ->
 			Utils.isLocalAssetUrl("file:///Desktop/index.html", "http://apple.com/index.html").should.equal(true)
 			Utils.isLocalAssetUrl("http://apple.com/index.html", "http://127.0.0.1/index.html").should.equal(false)
 			Utils.isLocalAssetUrl("Desktop/index.html", dataUrl).should.equal(false)
+
+	describe "convertPointToContext", ->
+		it "should work when passing in a context", ->
+			point = Utils.convertPointToContext({x: 10, y: 20}, Framer.CurrentContext, true)
+			point.should.eql {x: 10, y: 20, z: 0}
+
+	describe "divideFrame", ->
+		it "should work", ->
+		frame =
+			x: 10
+			y: 20
+			width: 30
+			height: 40
+		Utils.divideFrame frame, 2
+		frame.should.eql {x: 5, y: 10, width: 15, height: 20}
+
+	describe "scaleFrames", ->
+		it "should scale a single layer", ->
+			l = new Layer
+				x: 10
+				y: 20
+				width: 30
+				height: 40
+			Utils.scaleFrames(l, 2)
+			l.frame.should.eql {x: 5, y: 10, width: 15, height: 20}
+
+		it "should scale all the descendants of a layer", ->
+			l = new Layer
+				x: 10
+				y: 20
+				width: 30
+				height: 40
+			l2 = new Layer
+				parent: l
+				x: 10
+				y: 20
+				width: 30
+				height: 40
+			l3 = new Layer
+				parent: l
+				x: 10
+				y: 20
+				width: 30
+				height: 40
+			l4 = new Layer
+				parent: l3
+				x: 10
+				y: 20
+				width: 30
+				height: 40
+			l5 = new Layer
+				parent: l3
+				x: 10
+				y: 20
+				width: 30
+				height: 40
+			Utils.scaleFrames(l, 2)
+			l.frame.should.eql {x: 5, y: 10, width: 15, height: 20}
+			l2.frame.should.eql {x: 5, y: 10, width: 15, height: 20}
+			l3.frame.should.eql {x: 5, y: 10, width: 15, height: 20}
+			l4.frame.should.eql {x: 5, y: 10, width: 15, height: 20}
+
+		it "should scale an array of layers", ->
+			l = new Layer
+				x: 10
+				y: 20
+				width: 30
+				height: 40
+			l2 = new Layer
+				x: 10
+				y: 20
+				width: 30
+				height: 40
+			Utils.scaleFrames([l, l2], 2)
+			l.frame.should.eql {x: 5, y: 10, width: 15, height: 20}
+			l2.frame.should.eql {x: 5, y: 10, width: 15, height: 20}
+
+		it "should set the constraintValues of the layer to null", ->
+			l = new Layer
+				x: 10
+				y: 20
+				width: 30
+				height: 40
+			l2 = new Layer
+				parent: l
+				size: l.size
+				constraintValues:
+					right: 0
+					bottom: 0
+			l2.constraintValues.should.eql top: 0, left: 0, right: 0, bottom: 0, aspectRatioLocked: false, centerAnchorX: 0, centerAnchorY: 0, width: 30, height: 40, widthFactor: null, heightFactor: null
+			l.size = width: 50, height: 60
+			l2.frame.should.eql x: 0, y: 0, width: 50, height: 60
+			Utils.scaleFrames(l, 2)
+			l.frame.should.eql {x: 5, y: 10, width: 25, height: 30}
+			l2.frame.should.eql {x: 0, y: 0, width: 25, height: 30}
+			assert.equal(l2.constraintValues, null)

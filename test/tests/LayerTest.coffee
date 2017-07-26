@@ -1,4 +1,5 @@
 assert = require "assert"
+{expect} = require "chai"
 simulate = require "simulate"
 
 describe "Layer", ->
@@ -276,9 +277,9 @@ describe "Layer", ->
 			layer.style["background-image"].indexOf("data:").should.not.equal(-1)
 			layer.style["background-image"].indexOf("?nocache=").should.equal(-1)
 
-		
+
 		it "should append nocache with an ampersand if url params already exist", (done) ->
-			
+
 			prefix = "../"
 			imagePath = "static/test.png?param=foo"
 			fullPath = prefix + imagePath
@@ -436,6 +437,11 @@ describe "Layer", ->
 			layer.style["overflow"].should.equal "scroll"
 			layer.ignoreEvents.should.equal false
 
+		it "should disable ignore events when scroll is set from constructor", ->
+			layerA = new Layer
+				scroll: true
+			layerA.ignoreEvents.should.equal false
+
 		it "should set style properties on create", ->
 
 			layer = new Layer backgroundColor: "red"
@@ -449,40 +455,47 @@ describe "Layer", ->
 				layer.x = "hello"
 			f.should.throw()
 
-		it "should set borderRadius", ->
-
-			testBorderRadius = (layer, value) ->
-
-				if layer.style["border-top-left-radius"] is "#{value}"
-					layer.style["border-top-left-radius"].should.equal "#{value}"
-					layer.style["border-top-right-radius"].should.equal "#{value}"
-					layer.style["border-bottom-left-radius"].should.equal "#{value}"
-					layer.style["border-bottom-right-radius"].should.equal "#{value}"
-				else
-					layer.style["border-top-left-radius"].should.equal "#{value} #{value}"
-					layer.style["border-top-right-radius"].should.equal "#{value} #{value}"
-					layer.style["border-bottom-left-radius"].should.equal "#{value} #{value}"
-					layer.style["border-bottom-right-radius"].should.equal "#{value} #{value}"
-
-			layer = new Layer
-
-			layer.borderRadius = 10
-			layer.borderRadius.should.equal 10
-
-			testBorderRadius(layer, "10px")
-
-			layer.borderRadius = "50%"
-			layer.borderRadius.should.equal "50%"
-
-			testBorderRadius(layer, "50%")
-
-
 		it "should set perspective", ->
 
 			layer = new Layer
 			layer.perspective = 500
 
 			layer.style["-webkit-perspective"].should.equal("500")
+
+		it "should have a default perspective of 0", ->
+			layer = new Layer
+			layer._element.style["webkitPerspective"].should.equal "none"
+			layer.perspective.should.equal 0
+
+		it "should allow the perspective to be changed", ->
+			layer = new Layer
+			layer.perspective = 800
+			layer.perspective.should.equal 800
+			layer._element.style["webkitPerspective"].should.equal "800"
+
+		it "should set the perspective to 'none' if set to 0", ->
+			layer = new Layer
+			layer.perspective = 0
+			layer.perspective.should.equal 0
+			layer._element.style["webkitPerspective"].should.equal "none"
+
+		it "should set the perspective to 'none' if set to none", ->
+			layer = new Layer
+			layer.perspective = "none"
+			layer.perspective.should.equal "none"
+			layer._element.style["webkitPerspective"].should.equal "none"
+
+		it "should set the perspective to 'none' if set to null", ->
+			layer = new Layer
+			layer.perspective = null
+			layer.perspective.should.equal 0
+			layer._element.style["webkitPerspective"].should.equal "none"
+
+		it "should not allow setting the perspective to random string", ->
+			layer = new Layer
+			(-> layer.perspective = "bla").should.throw("Layer.perspective: value 'bla' of type 'string' is not valid")
+			layer.perspective.should.equal 0
+			layer._element.style["webkitPerspective"].should.equal "none"
 
 		it "should have its backface visible by default", ->
 
@@ -528,6 +541,157 @@ describe "Layer", ->
 			layer.__framerInstanceInfo = {name: "aap"}
 			(_.startsWith layer.toInspect(), "<Layer aap id:").should.be.true
 
+		it "should set htmlIntrinsicSize", ->
+			layer = new Layer
+
+			assert.equal layer.htmlIntrinsicSize, null
+
+			layer.htmlIntrinsicSize = "aap"
+			assert.equal layer.htmlIntrinsicSize, null
+
+			layer.htmlIntrinsicSize =
+				width: 10
+			assert.equal layer.htmlIntrinsicSize, null
+
+			layer.htmlIntrinsicSize =
+				width: 10
+				height: 20
+			layer.htmlIntrinsicSize.should.eql({width: 10, height: 20})
+
+			layer.htmlIntrinsicSize = null
+			assert.equal layer.htmlIntrinsicSize, null
+
+		describe "Border Radius", ->
+
+			it "should set borderRadius", ->
+
+				testBorderRadius = (layer, value) ->
+
+					if layer.style["border-top-left-radius"] is "#{value}"
+						layer.style["border-top-left-radius"].should.equal "#{value}"
+						layer.style["border-top-right-radius"].should.equal "#{value}"
+						layer.style["border-bottom-left-radius"].should.equal "#{value}"
+						layer.style["border-bottom-right-radius"].should.equal "#{value}"
+					else
+						layer.style["border-top-left-radius"].should.equal "#{value} #{value}"
+						layer.style["border-top-right-radius"].should.equal "#{value} #{value}"
+						layer.style["border-bottom-left-radius"].should.equal "#{value} #{value}"
+						layer.style["border-bottom-right-radius"].should.equal "#{value} #{value}"
+
+				layer = new Layer
+
+				layer.borderRadius = 10
+				layer.borderRadius.should.equal 10
+
+				testBorderRadius(layer, "10px")
+
+				layer.borderRadius = "50%"
+				layer.borderRadius.should.equal "50%"
+
+				testBorderRadius(layer, "50%")
+
+			it "should set borderRadius with objects", ->
+
+				testBorderRadius = (layer, tl, tr, bl, br) ->
+
+					layer.style["border-top-left-radius"].should.equal "#{tl}"
+					layer.style["border-top-right-radius"].should.equal "#{tr}"
+					layer.style["border-bottom-left-radius"].should.equal "#{bl}"
+					layer.style["border-bottom-right-radius"].should.equal "#{br}"
+
+				layer = new Layer
+
+				# No matching keys is an error
+				layer.borderRadius = {aap: 10, noot: 20, mies: 30}
+				layer.borderRadius.should.equal 0
+				testBorderRadius(layer, "0px", "0px", "0px", "0px")
+
+				# Arrays are not supported either
+				layer.borderRadius = [1, 2, 3, 4]
+				layer.borderRadius.should.equal 0
+				testBorderRadius(layer, "0px", "0px", "0px", "0px")
+
+				layer.borderRadius = {topLeft: 10}
+				layer.borderRadius.topLeft.should.equal 10
+				testBorderRadius(layer, "10px", "0px", "0px", "0px")
+
+				layer.borderRadius = {topLeft: 1, topRight: 2, bottomLeft: 3, bottomRight: 4}
+				layer.borderRadius.topLeft.should.equal 1
+				layer.borderRadius.bottomRight.should.equal 4
+				testBorderRadius(layer, "1px", "2px", "3px", "4px")
+
+			it "should copy borderRadius when set with an object", ->
+				layer = new Layer
+				borderRadius = {topLeft: 100}
+				layer.borderRadius = borderRadius
+				borderRadius.bottomRight = 100
+				layer.borderRadius.bottomRight.should.equal 0
+
+			it "should set sub-properties of borderRadius", ->
+				layer = new Layer
+					borderRadius: {topLeft: 100}
+				layer.borderRadius.bottomRight = 100
+				layer.borderRadius.topLeft.should.equal(100)
+				layer.borderRadius.bottomRight.should.equal(100)
+				layer.style["border-top-left-radius"].should.equal "100px"
+				layer.style["border-bottom-right-radius"].should.equal "100px"
+
+		describe "Border Width", ->
+
+			it "should copy borderWidth when set with an object", ->
+				layer = new Layer
+				borderWidth = {top: 100}
+				layer.borderWidth = borderWidth
+				borderWidth.bottom = 100
+				layer.borderWidth.bottom.should.equal 0
+
+			it "should set sub-properties of borderWidth", ->
+				layer = new Layer
+					borderWidth: {top: 10}
+				layer.borderWidth.bottom = 10
+				layer.borderWidth.top.should.equal(10)
+				layer.borderWidth.bottom.should.equal(10)
+				layer._elementBorder.style["border-top-width"].should.equal "10px"
+				layer._elementBorder.style["border-bottom-width"].should.equal "10px"
+
+		describe "Gradient", ->
+
+			it "should set gradient", ->
+				layer = new Layer
+				layer.gradient = new Gradient
+					start: "blue"
+					end: "red"
+					angle: 42
+				layer.gradient.start.isEqual("blue").should.be.true
+				layer.gradient.end.isEqual("red").should.be.true
+				layer.gradient.angle.should.equal(42)
+				layer.style["background-image"].should.equal("linear-gradient(42deg, rgb(0, 0, 255), rgb(255, 0, 0))")
+
+				layer.gradient =
+					start: "yellow"
+					end: "purple"
+				layer.gradient.angle.should.equal(0)
+				layer.style["background-image"].should.equal("linear-gradient(0deg, rgb(255, 255, 0), rgb(128, 0, 128))")
+
+				layer.gradient = null
+				layer.style["background-image"].should.equal("")
+
+			it "should copy gradients when set with an object", ->
+				layer = new Layer
+				gradient = new Gradient
+					start: "blue"
+				layer.gradient = gradient
+				gradient.start = "yellow"
+				layer.gradient.start.isEqual("blue").should.be.true
+
+			it "should set sub-properties of gradients", ->
+				layer = new Layer
+					gradient:
+						start: "blue"
+				layer.gradient.end = "yellow"
+				layer.gradient.start.isEqual("blue").should.be.true
+				layer.gradient.end.isEqual("yellow").should.be.true
+				layer.style["background-image"].should.equal("linear-gradient(0deg, rgb(0, 0, 255), rgb(255, 255, 0))")
 
 	describe "Filter Properties", ->
 
@@ -692,13 +856,13 @@ describe "Layer", ->
 			assert.deepEqual layerB.siblingLayers, [layerC]
 			assert.deepEqual layerC.siblingLayers, [layerB]
 
-		it "should list super layers", ->
+		it "should list ancestors", ->
 
 			layerA = new Layer
 			layerB = new Layer superLayer: layerA
 			layerC = new Layer superLayer: layerB
 
-			assert.deepEqual layerC.superLayers(), [layerB, layerA]
+			assert.deepEqual layerC.ancestors(), [layerB, layerA]
 
 		it "should list descendants deeply", ->
 
@@ -824,12 +988,47 @@ describe "Layer", ->
 			layerB.siblingLayersByName("C").should.eql [layerC, layerD]
 			layerD.siblingLayersByName("B").should.eql [layerB]
 
-		it "should get a superlayers", ->
+		it "should get a ancestors", ->
 			layerA = new Layer
 			layerB = new Layer superLayer: layerA
 			layerC = new Layer superLayer: layerB
-			layerC.superLayers().should.eql [layerB, layerA]
+			layerC.ancestors().should.eql [layerB, layerA]
 
+	describe "Select Layer", ->
+
+		beforeEach ->
+			Framer.CurrentContext.reset()
+
+		it "should select the layer named B", ->
+			layerA = new Layer name: 'A'
+			layerB = new Layer name: 'B', parent: layerA
+			layerA.selectChild('B').should.equal layerB
+
+		it "should select the layer named C", ->
+			layerA = new Layer name: 'A'
+			layerB = new Layer name: 'B', parent: layerA
+			layerC = new Layer name: 'C', parent: layerB
+			layerA.selectChild('B > *').should.equal layerC
+
+		it "should have a static method `select`", ->
+			layerA = new Layer name: 'A'
+			layerB = new Layer name: 'B', parent: layerA
+			layerC = new Layer name: 'C', parent: layerB
+			Layer.select('B > *').should.equal layerC
+
+		it "should have a method `selectAllChildren`", ->
+			layerA = new Layer name: 'A'
+			layerB = new Layer name: 'B', parent: layerA
+			layerC = new Layer name: 'C', parent: layerB
+			layerD = new Layer name: 'D', parent: layerB
+			layerA.selectAllChildren('B > *').should.eql [layerC, layerD]
+
+		it "should have a static method `selectAll`", ->
+			layerA = new Layer name: 'A'
+			layerB = new Layer name: 'B', parent: layerA # asdas
+			layerC = new Layer name: 'C', parent: layerB
+			layerD = new Layer name: 'D', parent: layerB
+			Layer.selectAll('A *').should.eql [layerB, layerC, layerD]
 
 	describe "Frame", ->
 
@@ -1008,6 +1207,21 @@ describe "Layer", ->
 
 			layerB.frame.should.eql {x: 20, y: 20, width: 100, height: 100}
 
+		it "should center within outer frame", ->
+			layerA = new Layer width: 10, height: 10
+			layerA.center()
+			assert.equal layerA.x, 195
+			assert.equal layerA.y, 145
+
+		it "should center correctly with dpr set", ->
+			device = new DeviceComponent()
+			device.deviceType = "apple-iphone-7-black"
+			device.context.run ->
+				layerA = new Layer size: 100
+				layerA.center()
+				layerA.context.devicePixelRatio.should.equal 2
+				layerA.x.should.equal 137
+				layerA.y.should.equal 283
 
 	describe "CSS", ->
 
@@ -1086,7 +1300,7 @@ describe "Layer", ->
 
 			layer.force2d = true
 
-			layer.style.webkitTransform.should.equal "translate(0px, 0px) scale(1) skew(0deg, 0deg) rotate(0deg)"
+			layer.style.webkitTransform.should.equal "translate(0px, 0px) scale(1, 1) skew(0deg, 0deg) rotate(0deg)"
 
 	describe "Matrices", ->
 
@@ -1147,7 +1361,7 @@ describe "Layer", ->
 
 			boundingBox.x.should.eql 184
 			boundingBox.y.should.eql 98
-			boundingBox.width.should.eql 133
+			boundingBox.width.should.eql 132
 			boundingBox.height.should.eql 144
 
 		it "should use Framer.Defaults when setting the screen frame", ->
@@ -1173,7 +1387,7 @@ describe "Layer", ->
 
 			boundingBox.x.should.eql 184
 			boundingBox.y.should.eql 98
-			boundingBox.width.should.eql 133
+			boundingBox.width.should.eql 132
 			boundingBox.height.should.eql 144
 
 	describe "Copy", ->
@@ -1316,3 +1530,202 @@ describe "Layer", ->
 
 			canvasToLayerBPoint.x.should.equal -25
 			canvasToLayerBPoint.y.should.equal 125
+	describe "Device Pixel Ratio", ->
+		it "should default to 1", ->
+			a = new Layer
+			a.context.devicePixelRatio.should.equal 1
+
+		it "should change all of a layers children", ->
+			context = new Framer.Context(name: "Test")
+			context.run ->
+				a = new Layer
+				b = new Layer
+					parent: a
+				c = new Layer
+					parent: b
+				a.context.devicePixelRatio = 3
+				for l in [a, b, c]
+					l._element.style.width.should.equal "300px"
+
+	describe "containers", ->
+		it "should return empty when called on rootLayer", ->
+			a = new Layer name: "a"
+			a.containers().should.deep.equal []
+
+		it "should return all ancestors", ->
+			a = new Layer name: "a"
+			b = new Layer parent: a, name: "b"
+			c = new Layer parent: b, name: "c"
+			d = new Layer parent: c, name: "d"
+			names = d.containers().map (l) -> l.name
+			names.should.deep.equal ["c", "b", "a"]
+
+		it "should include the device return all ancestors", ->
+			device = new DeviceComponent()
+			device.context.run ->
+				a = new Layer name: "a"
+				b = new Layer parent: a, name: "b"
+				c = new Layer parent: b, name: "c"
+				d = new Layer parent: c, name: "d"
+				containers = d.containers(true)
+				containers.length.should.equal 10
+				names = containers.map((l) -> l.name)
+				names.should.eql ["c", "b", "a", undefined, "viewport", "screen", "phone", "phone", "hands", undefined]
+
+	describe "constraintValues", ->
+		it "layout should not break constraints", ->
+			l = new Layer
+				x: 100
+				constraintValues:
+					aspectRatioLocked: true
+			l.x.should.equal 100
+			l.layout()
+			l.x.should.equal 0
+			assert.notEqual l.constraintValues, null
+
+		it "should break all constraints when setting x", ->
+			l = new Layer
+				x: 100
+				constraintValues:
+					aspectRatioLocked: true
+			l.x.should.equal 100
+			assert.notEqual l.constraintValues, null
+			l.x = 50
+			assert.equal l.constraintValues, null
+
+		it "should break all constraints when setting y", ->
+			l = new Layer
+				y: 100
+				constraintValues:
+					aspectRatioLocked: true
+			l.y.should.equal 100
+			assert.notEqual l.constraintValues, null
+			l.y = 50
+			assert.equal l.constraintValues, null
+
+		it "should update the width constraint when setting width", ->
+			l = new Layer
+				width: 100
+				constraintValues:
+					aspectRatioLocked: true
+			l.width.should.equal 100
+			assert.notEqual l.constraintValues, null
+			l.width = 50
+			l.constraintValues.width.should.equal 50
+
+		it "should update the height constraint when setting height", ->
+			l = new Layer
+				height: 100
+				constraintValues:
+					aspectRatioLocked: true
+			l.height.should.equal 100
+			assert.notEqual l.constraintValues, null
+			l.height = 50
+			l.constraintValues.height.should.equal 50
+
+		it "should disable the aspectRatioLock and widthFactor constraint when setting width", ->
+			l = new Layer
+				constraintValues:
+					aspectRatioLocked: true
+					widthFactor: 0.5
+					width: null
+			l.layout()
+			l.width.should.equal 200
+			assert.notEqual l.constraintValues, null
+			l.width = 50
+			l.constraintValues.aspectRatioLocked.should.equal false
+			assert.equal l.constraintValues.widthFactor, null
+
+		it "should disable the aspectRatioLock and heightFactor constraint when setting height", ->
+			l = new Layer
+				constraintValues:
+					aspectRatioLocked: true
+					heightFactor: 0.5
+					height: null
+			l.layout()
+			l.height.should.equal 150
+			assert.notEqual l.constraintValues, null
+			l.height = 50
+			assert.equal l.constraintValues.heightFactor, null
+
+		it "should update the x position when changing width", ->
+			l = new Layer
+				width: 100
+				constraintValues:
+					left: null
+					right: 20
+			l.layout()
+			l.width.should.equal 100
+			l.x.should.equal 280
+			assert.notEqual l.constraintValues, null
+			l.width = 50
+			l.x.should.equal 330
+
+		it "should update the y position when changing height", ->
+			l = new Layer
+				height: 100
+				constraintValues:
+					top: null
+					bottom: 20
+			l.layout()
+			l.height.should.equal 100
+			l.y.should.equal 180
+			assert.notEqual l.constraintValues, null
+			l.height = 50
+			l.y.should.equal 230
+
+		it "should update to center the layer when center() is called", ->
+			l = new Layer
+				constraintValues:
+					aspectRatioLocked: true
+			l.layout()
+			l.center()
+			l.x.should.equal 150
+			l.y.should.equal 100
+			assert.equal l.constraintValues.left, null
+			assert.equal l.constraintValues.right, null
+			assert.equal l.constraintValues.top, null
+			assert.equal l.constraintValues.bottom, null
+			assert.equal l.constraintValues.centerAnchorX, 0.5
+			assert.equal l.constraintValues.centerAnchorY, 0.5
+
+		it "should update to center the layer vertically when centerX() is called", ->
+			l = new Layer
+				constraintValues:
+					aspectRatioLocked: true
+			l.layout()
+			l.x.should.equal 0
+			l.centerX()
+			l.x.should.equal 150
+			assert.equal l.constraintValues.left, null
+			assert.equal l.constraintValues.right, null
+			assert.equal l.constraintValues.centerAnchorX, 0.5
+
+		it "should update to center the layer horizontally when centerY() is called", ->
+			l = new Layer
+				constraintValues:
+					aspectRatioLocked: true
+			l.layout()
+			l.y.should.equal 0
+			l.centerY()
+			l.y.should.equal 100
+			assert.equal l.constraintValues.top, null
+			assert.equal l.constraintValues.bottom, null
+			assert.equal l.constraintValues.centerAnchorY, 0.5
+
+		describe "when no constraints are set", ->
+			it "should not set the width constraint when setting the width", ->
+				l = new Layer
+					width: 100
+				l.width.should.equal 100
+				assert.equal l.constraintValues, null
+				l.width = 50
+				assert.equal l.constraintValues, null
+
+			it "should not set the height constraint when setting the height", ->
+				l = new Layer
+					height: 100
+				l.height.should.equal 100
+				assert.equal l.constraintValues, null
+				l.height = 50
+				assert.equal l.constraintValues, null

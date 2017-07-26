@@ -160,6 +160,9 @@ class exports.Color extends BaseClass
 			b: @b
 			a: alpha
 
+	multiplyAlpha: (alpha) ->
+		return @alpha(@a * alpha)
+
 	transparent: ->
 		@alpha(0)
 
@@ -269,7 +272,7 @@ class exports.Color extends BaseClass
 	@toColor: (color) -> return new Color(color)
 	@validColorValue: (color) -> return color instanceof Color or color is null
 
-	@isColor: (color) ->
+	@isColor: (color) =>
 		if _.isString(color)
 			return @isColorString(color)
 		else
@@ -303,10 +306,11 @@ class exports.Color extends BaseClass
 		colorA = new Color(colorA)
 		colorB = new Color(colorB)
 
-		return false if colorA.r isnt colorB.r
-		return false if colorA.g isnt colorB.g
-		return false if colorA.b isnt colorB.b
-		return false if colorA.a isnt colorB.a
+		tolerance = 0.01
+		return false if Math.abs(colorA.r - colorB.r) >= tolerance
+		return false if Math.abs(colorA.g - colorB.g) >= tolerance
+		return false if Math.abs(colorA.b - colorB.b) >= tolerance
+		return false if Math.abs(colorA.a - colorB.a) >= tolerance
 		return true
 
 	@rgbToHsl: (a, b, c) ->

@@ -12,6 +12,7 @@ Framer.resetDefaults()
 
 Framer.Device = new Framer.DeviceView()
 
+window.TESTING = true
 window.console.debug = (v) ->
 window.console.warn = (v) ->
 
@@ -42,9 +43,11 @@ require "./tests/LayerDraggableTest"
 require "./tests/ContextTest"
 require "./tests/ScrollComponentTest"
 require "./tests/TextLayerTest"
+require "./tests/SVGLayerTest"
 require "./tests/PageComponentTest"
 require "./tests/VersionTest"
 require "./tests/ColorTest"
+require "./tests/GradientTest"
 require "./tests/DeviceComponentTest"
 require "./tests/SliderComponentTest"
 require "./tests/RangeSliderComponentTest"
